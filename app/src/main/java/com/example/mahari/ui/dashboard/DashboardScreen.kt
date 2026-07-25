@@ -50,6 +50,7 @@ fun DashboardScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var showFullListSheet by remember { mutableStateOf(false) }
 
     if (showShareDialog) {
         com.example.mahari.ui.share.ShareDashboardDialog(
@@ -285,37 +286,25 @@ fun DashboardScreen(
                 }
             }
 
-            // 5. Transaction Ledger List
-            if (uiState.transactions.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No transactions found.\nIncoming M-Pesa SMS will appear here automatically.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            } else {
-                items(uiState.transactions) { tx ->
-                    TransactionItemRow(
-                        transaction = tx,
-                        onClick = { selectedTxForRecategorize = tx }
-                    )
-                }
+            // 5. Recent Transactions Preview Card (Top 5)
+            item {
+                RecentTransactionsCard(
+                    transactions = uiState.transactions.take(5),
+                    totalCount = uiState.transactions.size,
+                    onSeeAll = { showFullListSheet = true },
+                    onTransactionClick = { selectedTxForRecategorize = it }
+                )
             }
         }
+    }
+
+    if (showFullListSheet) {
+        FullTransactionListSheet(
+            transactions = uiState.transactions,
+            periodLabel = uiState.dateScopeMode.label,
+            onTransactionClick = { selectedTxForRecategorize = it },
+            onDismiss = { showFullListSheet = false }
+        )
     }
 
     // Recategorize Dialog
@@ -668,4 +657,76 @@ fun RecategorizeDialog(
             TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
+}
+
+@Composable
+fun RecentTransactionsCard(
+    transactions: List<TransactionEntity>,
+    totalCount: Int,
+    onSeeAll: () -> Unit,
+    onTransactionClick: (TransactionEntity) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "RECENT TRANSACTIONS",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                if (totalCount > 5) {
+                    Text(
+                        text = "Showing 5 of $totalCount",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (transactions.isEmpty()) {
+                Text(
+                    text = "No transactions recorded yet in this period.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            } else {
+                transactions.forEachIndexed { idx, tx ->
+                    TransactionItemRow(
+                        transaction = tx,
+                        onClick = { onTransactionClick(tx) }
+                    )
+                    if (idx < transactions.size - 1) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                    }
+                }
+
+                if (totalCount > 5) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = onSeeAll,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = PrimaryNavy),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("See All $totalCount Transactions →", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 }

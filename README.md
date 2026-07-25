@@ -28,6 +28,7 @@
 - **Month Stepper (`< July 2026 >`)**: Fast month navigation arrows capped at the current real-world month.
 - **Custom Range Picker**: 📆 Calendar picker for custom start & end date ranges with a one-tap **"Back to Current Month"** snap-back button.
 - **Search All-Time Override**: 🌐 Search bar respects current date-scope by default, with an explicit **"Search All Time"** toggle chip.
+- **Recent Transactions Top 5 Preview**: Dashboard displays a compact card showing only the 5 most recent transactions (slim rows with merchant, category icon, amount, and time), with a **"See all {N} transactions"** button that opens `FullTransactionListSheet` modal sheet. Automatically hides the button when <= 5 items exist.
 
 ### 🏛️ 3. Quiet Luxury Visual Design System
 - **OLED Warm Charcoal Background**: `#16181A` (`WarmCharcoalBgDark`) for warm, rich OLED dark mode.
