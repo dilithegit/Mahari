@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mahari.data.db.BudgetEntity
 import com.example.mahari.data.db.TransactionEntity
+import com.example.mahari.data.model.DateScopeMode
 import com.example.mahari.data.repository.TransactionRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class CategorySpend(
     val category: String,
@@ -14,14 +16,8 @@ data class CategorySpend(
     val percentageShare: Float
 )
 
-data class SummaryData(
-    val todaySpend: Double = 0.0,
-    val budget: BudgetEntity? = null,
-    val monthIncome: Double = 0.0,
-    val monthExpense: Double = 0.0
-)
-
 data class DashboardUiState(
+    val dateScopeMode: DateScopeMode = DateScopeMode.currentMonth(),
     val todaySpend: Double = 0.0,
     val dailyBudgetLimit: Double = 1000.0,
     val monthIncome: Double = 0.0,
@@ -29,6 +25,7 @@ data class DashboardUiState(
     val topCategories: List<CategorySpend> = emptyList(),
     val transactions: List<TransactionEntity> = emptyList(),
     val searchQuery: String = "",
+    val isSearchAllTime: Boolean = false,
     val selectedCategoryFilter: String? = null
 )
 
@@ -36,52 +33,57 @@ class DashboardViewModel(
     private val repository: TransactionRepository
 ) : ViewModel() {
 
+    private val _dateScopeMode = MutableStateFlow<DateScopeMode>(DateScopeMode.currentMonth())
+    val dateScopeMode: StateFlow<DateScopeMode> = _dateScopeMode.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _isSearchAllTime = MutableStateFlow(false)
+    val isSearchAllTime: StateFlow<Boolean> = _isSearchAllTime.asStateFlow()
 
     private val _selectedCategoryFilter = MutableStateFlow<String?>(null)
     val selectedCategoryFilter: StateFlow<String?> = _selectedCategoryFilter.asStateFlow()
 
-    private val summaryFlow: Flow<SummaryData> = combine(
-        repository.getTodayExpenses(),
-        repository.currentBudget,
-        repository.getMonthIncome(),
-        repository.getMonthExpenses()
-    ) { todayExp, budget, monthInc, monthExp ->
-        SummaryData(
-            todaySpend = todayExp ?: 0.0,
-            budget = budget,
-            monthIncome = monthInc ?: 0.0,
-            monthExpense = monthExp ?: 0.0
-        )
-    }
-
+    @Suppress("UNCHECKED_CAST")
     val uiState: StateFlow<DashboardUiState> = combine(
-        summaryFlow,
+        _dateScopeMode,
         repository.allTransactions,
+        repository.currentBudget,
         _searchQuery,
+        _isSearchAllTime,
         _selectedCategoryFilter
-    ) { summary, allTx: List<TransactionEntity>, query: String, categoryFilter: String? ->
+    ) { flows: Array<Any?> ->
+        val scopeMode = flows[0] as DateScopeMode
+        val allTx = flows[1] as List<TransactionEntity>
+        val budget = flows[2] as BudgetEntity?
+        val query = flows[3] as String
+        val searchAllTime = flows[4] as Boolean
+        val categoryFilter = flows[5] as String?
 
-        val todaySpent = summary.todaySpend
-        val dailyBudget = summary.budget?.dailyLimit ?: 1000.0
-        val income = summary.monthIncome
-        val expense = summary.monthExpense
+        val startTs = scopeMode.startTimestamp
+        val endTs = scopeMode.endTimestamp
 
-        // Filter transactions
-        val filteredTx = allTx.filter { tx ->
-            val matchesQuery = query.isEmpty() ||
-                    tx.merchantOrParty.contains(query, ignoreCase = true) ||
-                    tx.code.contains(query, ignoreCase = true) ||
-                    tx.rawText.contains(query, ignoreCase = true)
 
-            val matchesCategory = categoryFilter == null || tx.category.equals(categoryFilter, ignoreCase = true)
+        // 1. Transactions strictly within active DateScope
+        val scopedTx = allTx.filter { it.timestamp in startTs..endTs }
 
-            matchesQuery && matchesCategory
+        // 2. Today's Spend (Calculated for current day)
+        val nowCal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
+        val startOfToday = nowCal.timeInMillis
+        val todaySpent = allTx.filter { it.timestamp >= startOfToday && it.isExpense }.sumOf { it.amount }
 
-        // Calculate Category Breakdown
-        val expenseTx = allTx.filter { it.isExpense }
+        // 3. Period Income & Expense
+        val periodIncome = scopedTx.filter { !it.isExpense }.sumOf { it.amount }
+        val periodExpense = scopedTx.filter { it.isExpense }.sumOf { it.amount }
+
+        // 4. Category Breakdown within DateScope
+        val expenseTx = scopedTx.filter { it.isExpense }
         val totalExp = expenseTx.sumOf { it.amount }
         val categorySpends = if (totalExp > 0) {
             expenseTx.groupBy { it.category }
@@ -96,14 +98,29 @@ class DashboardViewModel(
                 .sortedByDescending { it.totalAmount }
         } else emptyList()
 
+        // 5. Search Filtering (Respects DateScope UNLESS isSearchAllTime is TRUE)
+        val poolForSearch = if (searchAllTime) allTx else scopedTx
+        val filteredTx = poolForSearch.filter { tx ->
+            val matchesQuery = query.isEmpty() ||
+                    tx.merchantOrParty.contains(query, ignoreCase = true) ||
+                    tx.code.contains(query, ignoreCase = true) ||
+                    tx.rawText.contains(query, ignoreCase = true)
+
+            val matchesCategory = categoryFilter == null || tx.category.equals(categoryFilter, ignoreCase = true)
+
+            matchesQuery && matchesCategory
+        }
+
         DashboardUiState(
+            dateScopeMode = scopeMode,
             todaySpend = todaySpent,
-            dailyBudgetLimit = dailyBudget,
-            monthIncome = income,
-            monthExpense = expense,
+            dailyBudgetLimit = budget?.dailyLimit ?: 1000.0,
+            monthIncome = periodIncome,
+            monthExpense = periodExpense,
             topCategories = categorySpends,
             transactions = filteredTx,
             searchQuery = query,
+            isSearchAllTime = searchAllTime,
             selectedCategoryFilter = categoryFilter
         )
     }.stateIn(
@@ -112,8 +129,36 @@ class DashboardViewModel(
         initialValue = DashboardUiState()
     )
 
+    fun onPreviousMonth() {
+        val current = _dateScopeMode.value
+        if (current is DateScopeMode.MonthMode) {
+            _dateScopeMode.value = current.stepPrevious()
+        } else {
+            _dateScopeMode.value = DateScopeMode.currentMonth().stepPrevious()
+        }
+    }
+
+    fun onNextMonth() {
+        val current = _dateScopeMode.value
+        if (current is DateScopeMode.MonthMode) {
+            _dateScopeMode.value = current.stepNext()
+        }
+    }
+
+    fun onCustomRangeSelected(start: Long, end: Long) {
+        _dateScopeMode.value = DateScopeMode.CustomRangeMode(start, end)
+    }
+
+    fun onResetToCurrentMonth() {
+        _dateScopeMode.value = DateScopeMode.currentMonth()
+    }
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+    }
+
+    fun onSearchAllTimeToggled(searchAllTime: Boolean) {
+        _isSearchAllTime.value = searchAllTime
     }
 
     fun onCategoryFilterSelected(category: String?) {
@@ -132,4 +177,3 @@ class DashboardViewModel(
         }
     }
 }
-

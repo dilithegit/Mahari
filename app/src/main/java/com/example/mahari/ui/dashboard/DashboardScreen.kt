@@ -31,6 +31,8 @@ import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.ui.budget.BudgetSettingsDialog
 import com.example.mahari.ui.settings.SettingsDialog
 import java.util.Calendar
+import com.example.mahari.ui.dashboard.DateScopeSelectorBar
+import com.example.mahari.ui.dashboard.DateRangePickerDialog
 
 
 @Composable
@@ -45,6 +47,16 @@ fun DashboardScreen(
     var selectedTxForRecategorize by remember { mutableStateOf<TransactionEntity?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+
+    if (showDatePickerDialog) {
+        DateRangePickerDialog(
+            onRangeSelected = { start, end ->
+                viewModel.onCustomRangeSelected(start, end)
+            },
+            onDismiss = { showDatePickerDialog = false }
+        )
+    }
 
     if (showSettingsDialog) {
         SettingsDialog(
@@ -125,6 +137,17 @@ fun DashboardScreen(
                 }
             }
 
+            // Global Date Scope Stepper Bar
+            item {
+                DateScopeSelectorBar(
+                    currentScope = uiState.dateScopeMode,
+                    onPreviousMonth = { viewModel.onPreviousMonth() },
+                    onNextMonth = { viewModel.onNextMonth() },
+                    onOpenDatePicker = { showDatePickerDialog = true },
+                    onResetToCurrentMonth = { viewModel.onResetToCurrentMonth() }
+                )
+            }
+
             // 0. Empty Budget Banner (Visible if no budget is configured)
             if (uiState.dailyBudgetLimit <= 0.0) {
                 item {
@@ -181,11 +204,11 @@ fun DashboardScreen(
                 )
             }
 
-            // 3. Top Categories Breakdown
+            // 3. Category Breakdown Section
             if (uiState.topCategories.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Top Spend Categories",
+                        text = "Spending Breakdown",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -197,7 +220,7 @@ fun DashboardScreen(
                 }
             }
 
-            // 4. Search Bar & Filter Chips
+            // 4. Search Bar & Filter Chips (with Search All Time Toggle)
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
@@ -211,7 +234,7 @@ fun DashboardScreen(
                         value = uiState.searchQuery,
                         onValueChange = { viewModel.onSearchQueryChanged(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search merchant, code, amount...") },
+                        placeholder = { Text(if (uiState.isSearchAllTime) "Search all history..." else "Search ${uiState.dateScopeMode.label}...") },
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -220,11 +243,22 @@ fun DashboardScreen(
                         )
                     )
 
-                    // Category Filter Chips
+                    // Filter Chips (Including Search All Time Override)
                     val categories = listOf("Food & Dining", "Groceries", "Utilities", "Transport", "Airtime & Data", "Income")
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        item {
+                            FilterChip(
+                                selected = uiState.isSearchAllTime,
+                                onClick = { viewModel.onSearchAllTimeToggled(!uiState.isSearchAllTime) },
+                                label = { Text(if (uiState.isSearchAllTime) "🌐 Search All Time (ON)" else "🌐 Search All Time") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = PrimaryNavy,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
                         items(categories) { category ->
                             FilterChip(
                                 selected = uiState.selectedCategoryFilter == category,
