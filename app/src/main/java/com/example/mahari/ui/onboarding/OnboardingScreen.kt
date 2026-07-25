@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.mahari.data.db.BudgetEntity
 import com.example.mahari.data.db.MahariDatabase
+import com.example.mahari.data.parser.BackfillResult
 import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.*
@@ -36,41 +37,52 @@ fun OnboardingScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentStep by remember { mutableStateOf(1) } // 1: Rationale, 2: Profile, 3: SMS Permission & Backfill, 4: Budget Setup
+    var currentStep by remember { mutableStateOf(1) } // 1: Welcome, 2: Profile, 3: SMS Permission, 4: Budget Setup
 
-    // Step 2 Profile State
+    // Profile State
     var userName by remember { mutableStateOf("") }
     var userAge by remember { mutableStateOf("") }
 
-    // Step 3 SMS Backfill State
+    // SMS Permission & Backfill State
     var isPermissionGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var hasAttemptedPermission by remember { mutableStateOf(false) }
     var isBackfilling by remember { mutableStateOf(false) }
-    var backfillCount by remember { mutableStateOf<Int?>(null) }
+    var backfillProgress by remember { mutableStateOf(0 to 0) } // processed to total
+    var backfillResult by remember { mutableStateOf<BackfillResult?>(null) }
 
-    // Step 4 Budget Setup State
+    // Budget Setup State
     var monthlyBudgetInput by remember { mutableStateOf("30000") }
+
+    fun triggerBackfill() {
+        coroutineScope.launch {
+            isBackfilling = true
+            val result = SmsBackfillManager.performOneTimeBackfill(
+                context = context,
+                transactionDao = database.transactionDao(),
+                mappingDao = database.merchantMappingDao(),
+                onProgress = { processed, total ->
+                    backfillProgress = processed to total
+                }
+            )
+            backfillResult = result
+            monthlyBudgetInput = result.suggestedMonthlyBudget.toInt().toString()
+            isBackfilling = false
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        hasAttemptedPermission = true
         val granted = permissions[Manifest.permission.READ_SMS] == true
         isPermissionGranted = granted
 
         if (granted) {
-            coroutineScope.launch {
-                isBackfilling = true
-                val count = SmsBackfillManager.performOneTimeBackfill(
-                    context = context,
-                    transactionDao = database.transactionDao(),
-                    mappingDao = database.merchantMappingDao()
-                )
-                backfillCount = count
-                isBackfilling = false
-            }
+            triggerBackfill()
         }
     }
 
@@ -108,13 +120,14 @@ fun OnboardingScreen(
                 )
             }
 
-            // Animated Step Content
+            // Animated Content per Step
             AnimatedContent(
                 targetState = currentStep,
-                label = "OnboardingStep"
+                label = "OnboardingWizard"
             ) { step ->
                 when (step) {
-                    1 -> RationaleStep(onNext = { currentStep = 2 })
+                    1 -> WelcomeStep(onNext = { currentStep = 2 })
+
                     2 -> ProfileStep(
                         name = userName,
                         onNameChange = { userName = it },
@@ -126,10 +139,13 @@ fun OnboardingScreen(
                             currentStep = 3
                         }
                     )
-                    3 -> SmsBackfillStep(
+
+                    3 -> SmsPermissionStep(
                         isGranted = isPermissionGranted,
+                        hasAttempted = hasAttemptedPermission,
                         isBackfilling = isBackfilling,
-                        backfillCount = backfillCount,
+                        backfillProgress = backfillProgress,
+                        backfillResult = backfillResult,
                         onRequestPermission = {
                             permissionLauncher.launch(
                                 arrayOf(
@@ -140,9 +156,12 @@ fun OnboardingScreen(
                         },
                         onNext = { currentStep = 4 }
                     )
+
                     4 -> BudgetSetupStep(
+                        userName = userName,
                         monthlyInput = monthlyBudgetInput,
                         onMonthlyInputChange = { monthlyBudgetInput = it },
+                        suggestedBudget = backfillResult?.suggestedMonthlyBudget ?: 30000.0,
                         onComplete = {
                             val limit = monthlyBudgetInput.toDoubleOrNull() ?: 30000.0
                             coroutineScope.launch {
@@ -159,14 +178,13 @@ fun OnboardingScreen(
                                 onOnboardingFinished()
                             }
                         }
-
                     )
                 }
             }
 
-            // Footer info
+            // Footer Privacy Note
             Text(
-                text = "100% Offline • Encrypted On-Device Processing",
+                text = "100% On-Device • Zero Network Calls",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -176,7 +194,7 @@ fun OnboardingScreen(
 }
 
 @Composable
-private fun RationaleStep(onNext: () -> Unit) {
+private fun WelcomeStep(onNext: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -191,7 +209,7 @@ private fun RationaleStep(onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Mahari automatically turns your Safaricom M-Pesa SMS messages into a real financial picture — spending by category, running daily budget limits, and smart alerts — without manual entry.",
+            text = "Mahari automatically turns your M-Pesa SMS messages into a real financial picture — spending by category, budget tracking, and alerts — without manual entry.",
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -204,13 +222,13 @@ private fun RationaleStep(onNext: () -> Unit) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "🔒 100% Offline & Private",
+                    text = "🔒 100% On-Device Privacy",
                     fontWeight = FontWeight.Bold,
                     color = PrimaryNavy
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Your sensitive financial SMS messages never leave your phone. Mahari makes zero network calls.",
+                    text = "Your sensitive financial SMS data stays on your phone. Mahari makes zero network calls.",
                     fontSize = 13.sp,
                     color = PrimaryNavy
                 )
@@ -242,14 +260,14 @@ private fun ProfileStep(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Your Local Profile",
+            text = "Setup Local Profile",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Provide your name and age to personalize your financial insights and on-device machine learning recap models.",
+            text = "Tell us your name and age to personalize your dashboard and feed your local ML recap engine.",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -260,7 +278,7 @@ private fun ProfileStep(
             value = name,
             onValueChange = onNameChange,
             label = { Text("Full Name or Nickname") },
-            placeholder = { Text("e.g. Okwudili") },
+            placeholder = { Text("e.g. Dili") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -278,7 +296,7 @@ private fun ProfileStep(
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "ℹ️ Stored 100% locally in encrypted storage. No password or cloud account required.",
+            text = "ℹ️ Stored 100% locally. No account, password, or cloud server involved.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -297,10 +315,12 @@ private fun ProfileStep(
 }
 
 @Composable
-private fun SmsBackfillStep(
+private fun SmsPermissionStep(
     isGranted: Boolean,
+    hasAttempted: Boolean,
     isBackfilling: Boolean,
-    backfillCount: Int?,
+    backfillProgress: Pair<Int, Int>,
+    backfillResult: BackfillResult?,
     onRequestPermission: () -> Unit,
     onNext: () -> Unit
 ) {
@@ -316,29 +336,53 @@ private fun SmsBackfillStep(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Grant SMS permissions so Mahari can perform a one-time scan of existing M-Pesa messages and intercept future receipts automatically.",
+            text = "Mahari requires READ_SMS and RECEIVE_SMS permissions to backfill your historical M-Pesa statements and intercept future receipts automatically.",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         if (!isGranted) {
+            if (hasAttempted) {
+                // Clear Permission Denial State
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AlertRedContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "⚠️ Permission Required", fontWeight = FontWeight.Bold, color = AlertRed)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Mahari cannot work without SMS access. Your messages remain 100% on your phone.",
+                            fontSize = 13.sp,
+                            color = AlertRed,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             Button(
                 onClick = onRequestPermission,
                 modifier = Modifier.fillMaxWidth(0.85f).height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
             ) {
-                Text("Grant SMS Permission", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(if (hasAttempted) "Tap to Retry Permission" else "Grant SMS Permission", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         } else {
             if (isBackfilling) {
                 CircularProgressIndicator(color = PrimaryNavy)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Scanning & backfilling existing M-Pesa SMS...",
+                    text = "Scanning inbox... Found ${backfillProgress.first} transactions, importing...",
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
             } else {
                 Card(
@@ -349,10 +393,10 @@ private fun SmsBackfillStep(
                         modifier = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "✅ SMS Permission Granted", fontWeight = FontWeight.Bold, color = IncomeMint)
+                        Text(text = "✅ SMS Backfill Complete!", fontWeight = FontWeight.Bold, color = IncomeMint)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (backfillCount != null) "Successfully backfilled $backfillCount existing M-Pesa transactions!" else "Ready to import M-Pesa transaction history.",
+                            text = if (backfillResult != null) "Successfully imported ${backfillResult.importedCount} historical M-Pesa transactions!" else "Ready to process M-Pesa statements.",
                             fontSize = 13.sp,
                             color = IncomeMint,
                             textAlign = TextAlign.Center
@@ -374,8 +418,10 @@ private fun SmsBackfillStep(
 
 @Composable
 private fun BudgetSetupStep(
+    userName: String,
     monthlyInput: String,
     onMonthlyInputChange: (String) -> Unit,
+    suggestedBudget: Double,
     onComplete: () -> Unit
 ) {
     val monthlyValue = monthlyInput.toDoubleOrNull() ?: 0.0
@@ -386,14 +432,14 @@ private fun BudgetSetupStep(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Set Monthly Budget",
+            text = if (userName.isNotEmpty()) "Set Budget, $userName" else "Set Monthly Budget",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Define your monthly target spend. Mahari automatically calculates your safe daily limit to keep you on track.",
+            text = "Define your target monthly spend. Suggested default calculated from your backfilled M-Pesa history.",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -408,6 +454,14 @@ private fun BudgetSetupStep(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Suggested based on history: KES ${String.format("%.0f", suggestedBudget)}",
+            fontSize = 12.sp,
+            color = PrimaryNavy,
+            fontWeight = FontWeight.SemiBold
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -440,7 +494,7 @@ private fun BudgetSetupStep(
             modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
         ) {
-            Text("Complete Setup & Launch Mahari", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Complete Setup & Launch Dashboard", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

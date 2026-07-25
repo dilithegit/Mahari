@@ -26,12 +26,17 @@ import com.example.mahari.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.ui.budget.BudgetSettingsDialog
+import com.example.mahari.ui.settings.SettingsDialog
+import java.util.Calendar
+
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    database: MahariDatabase,
     securityManager: SecurityManager,
     isDarkMode: Boolean,
     onToggleTheme: (Boolean) -> Unit
@@ -39,6 +44,18 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTxForRecategorize by remember { mutableStateOf<TransactionEntity?>(null) }
     var showBudgetDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            database = database,
+            securityManager = securityManager,
+            onDismiss = { showSettingsDialog = false },
+            onBudgetUpdated = { newLimit ->
+                viewModel.updateMonthlyBudget(newLimit)
+            }
+        )
+    }
 
     if (showBudgetDialog) {
         BudgetSettingsDialog(
@@ -52,6 +69,16 @@ fun DashboardScreen(
             }
         )
     }
+
+    // Time-of-day greeting
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greetingTime = when {
+        hour in 5..11 -> "Good morning"
+        hour in 12..16 -> "Good afternoon"
+        else -> "Good evening"
+    }
+    val name = securityManager.getUserName()
+    val greetingText = if (name.isNotEmpty()) "$greetingTime, $name" else "M-Pesa Financial Intelligence"
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -79,14 +106,14 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = if (securityManager.getUserName().isNotEmpty()) "Welcome, ${securityManager.getUserName()}" else "M-Pesa Financial Intelligence",
+                            text = greetingText,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(onClick = { showBudgetDialog = true }) {
+                        IconButton(onClick = { showSettingsDialog = true }) {
                             Text("⚙️", fontSize = 20.sp)
                         }
                         FilterChip(
@@ -94,6 +121,43 @@ fun DashboardScreen(
                             onClick = { onToggleTheme(!isDarkMode) },
                             label = { Text(if (isDarkMode) "🌙" else "☀️") }
                         )
+                    }
+                }
+            }
+
+            // 0. Empty Budget Banner (Visible if no budget is configured)
+            if (uiState.dailyBudgetLimit <= 0.0) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = PrimaryContainer),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Set a budget to see daily tracking",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = PrimaryNavy
+                                )
+                                Text(
+                                    text = "Track your daily spending limits & get real-time alerts.",
+                                    fontSize = 12.sp,
+                                    color = PrimaryNavy
+                                )
+                            }
+                            Button(
+                                onClick = { showBudgetDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
+                            ) {
+                                Text("Set Budget", fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -106,6 +170,7 @@ fun DashboardScreen(
                     onEditBudget = { showBudgetDialog = true }
                 )
             }
+
 
 
             // 2. Monthly Cashflow Summary Card

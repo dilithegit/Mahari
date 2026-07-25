@@ -60,11 +60,13 @@ class MainActivity : FragmentActivity() {
                     else -> {
                         DashboardScreen(
                             viewModel = viewModel,
+                            database = database,
                             securityManager = securityManager,
                             isDarkMode = isDarkMode,
                             onToggleTheme = { isDarkMode = it }
                         )
                     }
+
                 }
             }
         }

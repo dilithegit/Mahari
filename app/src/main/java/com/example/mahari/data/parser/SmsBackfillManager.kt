@@ -8,6 +8,12 @@ import com.example.mahari.data.db.TransactionDao
 import com.example.mahari.data.db.TransactionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Calendar
+
+data class BackfillResult(
+    val importedCount: Int,
+    val suggestedMonthlyBudget: Double
+)
 
 object SmsBackfillManager {
 
@@ -16,17 +22,17 @@ object SmsBackfillManager {
         transactionDao: TransactionDao,
         mappingDao: MerchantMappingDao? = null,
         onProgress: ((processed: Int, total: Int) -> Unit)? = null
-    ): Int = withContext(Dispatchers.IO) {
+    ): BackfillResult = withContext(Dispatchers.IO) {
         val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("_id", "address", "body", "date")
-        
+
         val cursor = context.contentResolver.query(
             uri,
             projection,
             null,
             null,
             "date DESC"
-        ) ?: return@withContext 0
+        ) ?: return@withContext BackfillResult(0, 30000.0)
 
         val entitiesToInsert = mutableListOf<TransactionEntity>()
         var totalMessages = 0
@@ -47,7 +53,6 @@ object SmsBackfillManager {
                 val body = if (bodyIdx != -1) c.getString(bodyIdx) ?: "" else ""
                 val date = if (dateIdx != -1) c.getLong(dateIdx) else System.currentTimeMillis()
 
-                // Filter for M-Pesa SMS notifications
                 val isMpesaAddress = address.contains("MPESA", ignoreCase = true) ||
                         address.contains("M-PESA", ignoreCase = true) ||
                         address.contains("Safaricom", ignoreCase = true)
@@ -75,7 +80,6 @@ object SmsBackfillManager {
                         entitiesToInsert.add(entity)
                     }
                 }
-
             }
         }
 
@@ -83,6 +87,21 @@ object SmsBackfillManager {
             transactionDao.insertTransactionsIgnore(entitiesToInsert)
         }
 
-        entitiesToInsert.size
+        // Calculate suggested monthly budget from backfilled expenses
+        val expenseTx = entitiesToInsert.filter { it.isExpense }
+        val totalExpenseSum = expenseTx.sumOf { it.amount }
+        val suggestedBudget = if (expenseTx.isNotEmpty()) {
+            val minDate = expenseTx.minOf { it.timestamp }
+            val maxDate = expenseTx.maxOf { it.timestamp }
+            val daysDiff = ((maxDate - minDate) / (1000 * 60 * 60 * 24)).coerceAtLeast(1)
+            val monthsDiff = (daysDiff / 30.0).coerceAtLeast(1.0)
+            val avgMonthly = totalExpenseSum / monthsDiff
+            // Round to nearest KES 500
+            (kotlin.math.round(avgMonthly / 500.0) * 500.0).coerceAtLeast(5000.0)
+        } else {
+            30000.0
+        }
+
+        BackfillResult(entitiesToInsert.size, suggestedBudget)
     }
 }
