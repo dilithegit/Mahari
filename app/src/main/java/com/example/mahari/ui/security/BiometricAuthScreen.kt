@@ -23,6 +23,7 @@ import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.PrimaryNavy
 
 @Composable
+
 fun BiometricAuthScreen(
     securityManager: SecurityManager,
     onUnlocked: () -> Unit
@@ -36,9 +37,11 @@ fun BiometricAuthScreen(
     fun showBiometricPrompt() {
         val activity = context as? FragmentActivity ?: return
         val executor = ContextCompat.getMainExecutor(context)
+
         val prompt = BiometricPrompt(
             activity,
             executor,
+
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)

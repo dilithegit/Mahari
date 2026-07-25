@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.mahari.MainActivity
 import com.example.mahari.data.db.BudgetEntity
 import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.parser.BackfillResult
@@ -27,6 +28,7 @@ import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.*
 import kotlinx.coroutines.launch
+
 
 @Composable
 fun OnboardingScreen(
@@ -51,6 +53,7 @@ fun OnboardingScreen(
     }
     var hasAttemptedPermission by remember { mutableStateOf(false) }
     var isBackfilling by remember { mutableStateOf(false) }
+    var hasBackfillError by remember { mutableStateOf(false) }
     var backfillProgress by remember { mutableStateOf(0 to 0) } // processed to total
     var backfillResult by remember { mutableStateOf<BackfillResult?>(null) }
 
@@ -60,31 +63,48 @@ fun OnboardingScreen(
     fun triggerBackfill() {
         coroutineScope.launch {
             isBackfilling = true
-            val result = SmsBackfillManager.performOneTimeBackfill(
-                context = context,
-                transactionDao = database.transactionDao(),
-                mappingDao = database.merchantMappingDao(),
-                onProgress = { processed, total ->
-                    backfillProgress = processed to total
-                }
-            )
-            backfillResult = result
-            monthlyBudgetInput = result.suggestedMonthlyBudget.toInt().toString()
-            isBackfilling = false
+            hasBackfillError = false
+            try {
+                val result = SmsBackfillManager.performOneTimeBackfill(
+                    context = context.applicationContext,
+                    transactionDao = database.transactionDao(),
+                    mappingDao = database.merchantMappingDao(),
+                    onProgress = { processed, total ->
+                        backfillProgress = processed to total
+                    }
+                )
+                backfillResult = result
+                monthlyBudgetInput = result.suggestedMonthlyBudget.toInt().toString()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                hasBackfillError = true
+            } finally {
+                isBackfilling = false
+            }
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    fun requestPermissions() {
+
         hasAttemptedPermission = true
-        val granted = permissions[Manifest.permission.READ_SMS] == true
-        isPermissionGranted = granted
-
-        if (granted) {
-            triggerBackfill()
+        val activity = context as? MainActivity
+        if (activity != null) {
+            activity.requestSmsPermissions { granted ->
+                isPermissionGranted = granted
+                if (granted) {
+                    triggerBackfill()
+                }
+            }
+        } else {
+            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+            isPermissionGranted = granted
+            if (granted) {
+                triggerBackfill()
+            }
         }
     }
+
+
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -144,18 +164,15 @@ fun OnboardingScreen(
                         isGranted = isPermissionGranted,
                         hasAttempted = hasAttemptedPermission,
                         isBackfilling = isBackfilling,
+                        hasError = hasBackfillError,
                         backfillProgress = backfillProgress,
                         backfillResult = backfillResult,
-                        onRequestPermission = {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.READ_SMS,
-                                    Manifest.permission.RECEIVE_SMS
-                                )
-                            )
-                        },
+                        onRequestPermission = { requestPermissions() },
+
+                        onRetryBackfill = { triggerBackfill() },
                         onNext = { currentStep = 4 }
                     )
+
 
                     4 -> BudgetSetupStep(
                         userName = userName,
@@ -319,9 +336,11 @@ private fun SmsPermissionStep(
     isGranted: Boolean,
     hasAttempted: Boolean,
     isBackfilling: Boolean,
+    hasError: Boolean,
     backfillProgress: Pair<Int, Int>,
     backfillResult: BackfillResult?,
     onRequestPermission: () -> Unit,
+    onRetryBackfill: () -> Unit,
     onNext: () -> Unit
 ) {
     Column(
@@ -345,7 +364,6 @@ private fun SmsPermissionStep(
 
         if (!isGranted) {
             if (hasAttempted) {
-                // Clear Permission Denial State
                 Card(
                     colors = CardDefaults.cardColors(containerColor = AlertRedContainer),
                     shape = RoundedCornerShape(16.dp)
@@ -384,6 +402,33 @@ private fun SmsPermissionStep(
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
+            } else if (hasError) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AlertRedContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "⚠️ Backfill Encountered an Issue", fontWeight = FontWeight.Bold, color = AlertRed)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Something went wrong importing your messages — tap to retry.",
+                            fontSize = 13.sp,
+                            color = AlertRed,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = onRetryBackfill,
+                    modifier = Modifier.fillMaxWidth(0.85f).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
+                ) {
+                    Text("Tap to Retry Import", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             } else {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = IncomeMintContainer),
@@ -415,6 +460,7 @@ private fun SmsPermissionStep(
         }
     }
 }
+
 
 @Composable
 private fun BudgetSetupStep(

@@ -1,10 +1,12 @@
 package com.example.mahari
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.MahariTheme
@@ -14,6 +16,32 @@ import com.example.mahari.ui.onboarding.OnboardingScreen
 import com.example.mahari.ui.security.BiometricAuthScreen
 
 class MainActivity : FragmentActivity() {
+
+    private var permissionCallback: ((Boolean) -> Unit)? = null
+
+    fun requestSmsPermissions(callback: (Boolean) -> Unit) {
+        this.permissionCallback = callback
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(
+                android.Manifest.permission.READ_SMS,
+                android.Manifest.permission.RECEIVE_SMS
+            ),
+            1001
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            permissionCallback?.invoke(granted)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +94,6 @@ class MainActivity : FragmentActivity() {
                             onToggleTheme = { isDarkMode = it }
                         )
                     }
-
                 }
             }
         }
