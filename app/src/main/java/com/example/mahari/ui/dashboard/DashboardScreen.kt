@@ -26,14 +26,32 @@ import com.example.mahari.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+import com.example.mahari.data.security.SecurityManager
+import com.example.mahari.ui.budget.BudgetSettingsDialog
+
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    securityManager: SecurityManager,
     isDarkMode: Boolean,
     onToggleTheme: (Boolean) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTxForRecategorize by remember { mutableStateOf<TransactionEntity?>(null) }
+    var showBudgetDialog by remember { mutableStateOf(false) }
+
+    if (showBudgetDialog) {
+        BudgetSettingsDialog(
+            currentMonthlyBudget = uiState.dailyBudgetLimit * 30.0,
+            userName = securityManager.getUserName(),
+            userAge = securityManager.getUserAge(),
+            onDismiss = { showBudgetDialog = false },
+            onSaveBudget = { newLimit ->
+                securityManager.setMonthlyBudget(newLimit)
+                viewModel.updateMonthlyBudget(newLimit)
+            }
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -61,17 +79,22 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "M-Pesa Financial Intelligence",
+                            text = if (securityManager.getUserName().isNotEmpty()) "Welcome, ${securityManager.getUserName()}" else "M-Pesa Financial Intelligence",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    FilterChip(
-                        selected = isDarkMode,
-                        onClick = { onToggleTheme(!isDarkMode) },
-                        label = { Text(if (isDarkMode) "🌙" else "☀️") }
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = { showBudgetDialog = true }) {
+                            Text("⚙️", fontSize = 20.sp)
+                        }
+                        FilterChip(
+                            selected = isDarkMode,
+                            onClick = { onToggleTheme(!isDarkMode) },
+                            label = { Text(if (isDarkMode) "🌙" else "☀️") }
+                        )
+                    }
                 }
             }
 
@@ -79,9 +102,11 @@ fun DashboardScreen(
             item {
                 HeroDailyBudgetCard(
                     todaySpend = uiState.todaySpend,
-                    dailyBudgetLimit = uiState.dailyBudgetLimit
+                    dailyBudgetLimit = uiState.dailyBudgetLimit,
+                    onEditBudget = { showBudgetDialog = true }
                 )
             }
+
 
             // 2. Monthly Cashflow Summary Card
             item {
@@ -196,7 +221,8 @@ fun DashboardScreen(
 @Composable
 fun HeroDailyBudgetCard(
     todaySpend: Double,
-    dailyBudgetLimit: Double
+    dailyBudgetLimit: Double,
+    onEditBudget: () -> Unit = {}
 ) {
     val progress = (todaySpend / dailyBudgetLimit).coerceIn(0.0, 1.0).toFloat()
     val animatedProgress by animateFloatAsState(
@@ -222,12 +248,24 @@ fun HeroDailyBudgetCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "TODAY'S SPEND",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "TODAY'S SPEND",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = onEditBudget,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Text("✏️", fontSize = 12.sp)
+                    }
+                }
+
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),

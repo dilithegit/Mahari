@@ -125,4 +125,11 @@ class DashboardViewModel(
             repository.recategorizeMerchant(merchant, newCategory)
         }
     }
+
+    fun updateMonthlyBudget(monthlyLimit: Double) {
+        viewModelScope.launch {
+            repository.setMonthlyBudget(monthlyLimit)
+        }
+    }
 }
+
