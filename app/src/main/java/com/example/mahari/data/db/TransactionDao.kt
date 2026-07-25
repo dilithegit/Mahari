@@ -17,8 +17,12 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTransactionsIgnore(transactions: List<TransactionEntity>)
+
     @Update
     suspend fun updateTransaction(transaction: TransactionEntity)
+
 
     @Query("UPDATE transactions SET category = :newCategory WHERE merchantOrParty = :merchant")
     suspend fun updateCategoryForMerchant(merchant: String, newCategory: String)
