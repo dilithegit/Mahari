@@ -9,6 +9,10 @@
 
 **Mahari** is a lightweight, fully offline Android financial intelligence application designed to parse M-Pesa SMS notifications, structure transactions, categorize spend, calculate running budgets, detect anomalies/recurring bills, and present monthly behavioral insights via on-device machine learning (XGBoost exported to ONNX).
 
+> [!NOTE]
+> Created by **Strathmore University** students **Okwudili Ujubuonu** and **Mark Gitau Irungu**.
+
+
 ---
 
 ## 🌟 Key Features
@@ -167,6 +171,15 @@ Mahari/
 
 ---
 
+## 👥 Authors & Credits
+
+Developed by **Strathmore University** students:
+- **Okwudili Ujubuonu**
+- **Mark Gitau Irungu**
+
+---
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for details.
+
