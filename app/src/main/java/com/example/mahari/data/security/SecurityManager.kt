@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.util.UUID
 
 class SecurityManager(context: Context) {
 
@@ -20,7 +21,6 @@ class SecurityManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        // Fallback to private preferences if MasterKey is unsupported
         context.getSharedPreferences("mahari_security_prefs", Context.MODE_PRIVATE)
     }
 
@@ -61,5 +61,26 @@ class SecurityManager(context: Context) {
         } else {
             prefs.edit().putString("user_pin", pin).apply()
         }
+    }
+
+    fun isCloudSyncEnabled(): Boolean = prefs.getBoolean("cloud_sync_enabled", false)
+
+    fun setCloudSyncEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("cloud_sync_enabled", enabled).apply()
+    }
+
+    fun hasConfirmedCloudSync(): Boolean = prefs.getBoolean("has_confirmed_cloud_sync", false)
+
+    fun setConfirmedCloudSync(confirmed: Boolean) {
+        prefs.edit().putBoolean("has_confirmed_cloud_sync", confirmed).apply()
+    }
+
+    fun getOrCreateDeviceId(): String {
+        var id = prefs.getString("device_id", null)
+        if (id.isNullOrEmpty()) {
+            id = UUID.randomUUID().toString()
+            prefs.edit().putString("device_id", id).apply()
+        }
+        return id
     }
 }

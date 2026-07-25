@@ -18,9 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.BudgetEntity
 import com.example.mahari.data.db.MahariDatabase
-import com.example.mahari.data.export.CsvExporter
 import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
+import com.example.mahari.data.sync.CloudSyncManager
+import com.example.mahari.theme.AlertRed
+import com.example.mahari.theme.AlertRedContainer
 import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.PrimaryNavy
 import kotlinx.coroutines.launch
@@ -40,8 +42,27 @@ fun SettingsDialog(
     var monthlyBudgetInput by remember { mutableStateOf(securityManager.getMonthlyBudget().toInt().toString()) }
     var isBiometricEnabled by remember { mutableStateOf(securityManager.isBiometricEnabled()) }
 
+    var isCloudSyncEnabled by remember { mutableStateOf(securityManager.isCloudSyncEnabled()) }
+    var showCloudConfirmDialog by remember { mutableStateOf(false) }
+    var isPurgingData by remember { mutableStateOf(false) }
+
     var isBackfilling by remember { mutableStateOf(false) }
     var backfillMessage by remember { mutableStateOf<String?>(null) }
+
+    if (showCloudConfirmDialog) {
+        CloudSyncConfirmationDialog(
+            onConfirm = {
+                securityManager.setConfirmedCloudSync(true)
+                securityManager.setCloudSyncEnabled(true)
+                isCloudSyncEnabled = true
+                showCloudConfirmDialog = false
+                Toast.makeText(context, "Cloud Sync mode enabled.", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = {
+                showCloudConfirmDialog = false
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -85,7 +106,7 @@ fun SettingsDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 // Section 2: Budget Settings
                 Text("BUDGET LIMITS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryNavy)
@@ -106,9 +127,71 @@ fun SettingsDialog(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                Divider()
+                HorizontalDivider()
 
-                // Section 3: SMS Re-Backfill
+                // Section 3: Optional Cloud Sync & XGBoost + SHAP Insights
+                Text("OPTIONAL CLOUD SYNC & ENHANCED INSIGHTS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryNavy)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(
+                            text = "Sync with cloud for enhanced insights (optional)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Runs full Python XGBoost + SHAP pipeline on backend server. Uploads ONLY structured transaction amounts, categories, and merchants. RAW SMS TEXT NEVER LEAVES YOUR PHONE.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 15.sp
+                        )
+                    }
+                    Switch(
+                        checked = isCloudSyncEnabled,
+                        onCheckedChange = { enable ->
+                            if (enable) {
+                                if (!securityManager.hasConfirmedCloudSync()) {
+                                    showCloudConfirmDialog = true
+                                } else {
+                                    securityManager.setCloudSyncEnabled(true)
+                                    isCloudSyncEnabled = true
+                                }
+                            } else {
+                                securityManager.setCloudSyncEnabled(false)
+                                isCloudSyncEnabled = false
+                            }
+                        }
+                    )
+                }
+
+                if (isCloudSyncEnabled) {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                isPurgingData = true
+                                val success = CloudSyncManager.purgeCloudData(securityManager)
+                                isPurgingData = false
+                                if (success) {
+                                    Toast.makeText(context, "All synced cloud data permanently deleted from backend server.", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Toast.makeText(context, "No cloud data found or server unreachable.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = !isPurgingData,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = AlertRedContainer, contentColor = AlertRed)
+                    ) {
+                        Text(if (isPurgingData) "Purging Server Data..." else "🗑️ Delete My Synced Cloud Data")
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Section 4: SMS Re-Backfill
                 Text("DATA & SMS RE-SYNC", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryNavy)
                 Button(
                     onClick = {
@@ -131,9 +214,9 @@ fun SettingsDialog(
                     Text(if (isBackfilling) "Rescanning Inbox..." else "🔄 Re-run SMS Backfill")
                 }
 
-                Divider()
+                HorizontalDivider()
 
-                // Section 4: Security
+                // Section 5: Security
                 Text("SECURITY & PRIVACY", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryNavy)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -150,9 +233,9 @@ fun SettingsDialog(
                     )
                 }
 
-                Divider()
+                HorizontalDivider()
 
-                // Section 5: About App
+                // Section 6: About App
                 Card(
                     colors = CardDefaults.cardColors(containerColor = PrimaryContainer),
                     shape = RoundedCornerShape(12.dp),
@@ -162,7 +245,7 @@ fun SettingsDialog(
                         Text("Mahari — M-Pesa Finance Tracker", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PrimaryNavy)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Created by Strathmore University students Okwudili Ujubuonu and Mark Gitau Irungu. 100% offline, zero network calls.",
+                            text = "Created by Strathmore University students Okwudili Ujubuonu and Mark Gitau Irungu. 100% offline-first by default.",
                             fontSize = 11.sp,
                             color = PrimaryNavy
                         )
