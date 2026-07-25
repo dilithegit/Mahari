@@ -13,15 +13,15 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = EmeraldAccentLight,
+    primary = WarmMetalLight,
     onPrimary = Color.White,
     primaryContainer = WarmBoneContainerLight,
     onPrimaryContainer = CharcoalTextPrimaryLight,
 
-    secondary = EmeraldMid,
+    secondary = WarmMetalLight,
     onSecondary = Color.White,
-    secondaryContainer = EmeraldContainerLight,
-    onSecondaryContainer = EmeraldAccentLight,
+    secondaryContainer = WarmMetalContainerLight,
+    onSecondaryContainer = WarmMetalLight,
 
     background = WarmBoneBgLight,
     onBackground = CharcoalTextPrimaryLight,
@@ -31,7 +31,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = WarmBoneContainerLight,
     onSurfaceVariant = CharcoalTextSecondaryLight,
 
-    outline = Color(0xFFD6D4CC),
+    outline = WarmMetalLight.copy(alpha = 0.4f),
 
     error = AlertRed,
     onError = Color.White,
@@ -40,25 +40,25 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = EmeraldAccentDark,
-    onPrimary = CharcoalBgDark,
-    primaryContainer = CharcoalElevatedDark,
-    onPrimaryContainer = EmeraldAccentDark,
+    primary = WarmMetalDark,
+    onPrimary = WarmCharcoalBgDark,
+    primaryContainer = WarmCharcoalElevatedDark,
+    onPrimaryContainer = CharcoalTextPrimaryDark,
 
-    secondary = EmeraldMid,
-    onSecondary = CharcoalBgDark,
-    secondaryContainer = EmeraldContainerDark,
-    onSecondaryContainer = EmeraldAccentDark,
+    secondary = WarmMetalDark,
+    onSecondary = WarmCharcoalBgDark,
+    secondaryContainer = WarmMetalContainerDark,
+    onSecondaryContainer = WarmMetalDark,
 
-    background = CharcoalBgDark,
+    background = WarmCharcoalBgDark,
     onBackground = CharcoalTextPrimaryDark,
 
-    surface = CharcoalCardDark,
+    surface = WarmCharcoalCardDark,
     onSurface = CharcoalTextPrimaryDark,
-    surfaceVariant = CharcoalElevatedDark,
+    surfaceVariant = WarmCharcoalElevatedDark,
     onSurfaceVariant = CharcoalTextSecondaryDark,
 
-    outline = Color(0xFF33383D),
+    outline = WarmMetalDark.copy(alpha = 0.35f),
 
     error = AlertRed,
     onError = Color.White,

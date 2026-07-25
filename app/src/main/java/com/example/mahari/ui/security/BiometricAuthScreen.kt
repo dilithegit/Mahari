@@ -1,7 +1,7 @@
 package com.example.mahari.ui.security
 
 import androidx.biometric.BiometricPrompt
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -19,11 +20,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.example.mahari.data.security.SecurityManager
-import com.example.mahari.theme.PrimaryContainer
-import com.example.mahari.theme.PrimaryNavy
+import com.example.mahari.theme.WarmCharcoalElevatedDark
+import com.example.mahari.theme.WarmMetalDark
 
 @Composable
-
 fun BiometricAuthScreen(
     securityManager: SecurityManager,
     onUnlocked: () -> Unit
@@ -41,7 +41,6 @@ fun BiometricAuthScreen(
         val prompt = BiometricPrompt(
             activity,
             executor,
-
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
@@ -81,34 +80,37 @@ fun BiometricAuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Luxury Cowrie Pre-Auth Mark
             Surface(
                 shape = CircleShape,
-                color = PrimaryContainer,
-                modifier = Modifier.size(80.dp)
+                color = WarmCharcoalElevatedDark,
+                border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.5f)),
+                modifier = Modifier.size(96.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("🔒", fontSize = 36.sp)
+                    Text("🐚", fontSize = 40.sp)
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "Mahari Secured",
-                fontSize = 24.sp,
+                text = "MAHARI",
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
+                letterSpacing = 3.sp,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Enter your 4-digit security PIN to unlock",
-                fontSize = 14.sp,
+                text = "Unlock to view your financial picture",
+                fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             OutlinedTextField(
                 value = pinInput,
@@ -148,9 +150,10 @@ fun BiometricAuthScreen(
             if (securityManager.isBiometricEnabled()) {
                 OutlinedButton(
                     onClick = { showBiometricPrompt() },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.4f))
                 ) {
-                    Text("Use Biometric Unlock", color = PrimaryNavy)
+                    Text("Use Biometric Unlock", color = WarmMetalDark)
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.example.mahari.ui.dashboard
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -199,8 +200,8 @@ fun DashboardScreen(
             // 2. Monthly Cashflow Summary Card
             item {
                 MonthlyCashflowCard(
-                    income = uiState.monthIncome,
-                    expense = uiState.monthExpense
+                    monthIncome = uiState.monthIncome,
+                    monthExpense = uiState.monthExpense
                 )
             }
 
@@ -326,7 +327,7 @@ fun HeroDailyBudgetCard(
     val progress = (todaySpend / dailyBudgetLimit).coerceIn(0.0, 1.0).toFloat()
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(1000),
+        animationSpec = tween(1000, easing = FastOutSlowInEasing),
         label = "budget_progress"
     )
 
@@ -336,11 +337,12 @@ fun HeroDailyBudgetCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.35f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -355,7 +357,8 @@ fun HeroDailyBudgetCard(
                         text = "TODAY'S SPEND",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
                     )
                     IconButton(
                         onClick = onEditBudget,
@@ -365,25 +368,25 @@ fun HeroDailyBudgetCard(
                     }
                 }
 
-
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isOverBudget) AlertRedContainer else GreenContainerLight
+                    color = if (isOverBudget) AlertRedContainer else WarmCharcoalElevatedDark
                 ) {
                     Text(
                         text = if (isOverBudget) "OVER BUDGET" else "ON BUDGET",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isOverBudget) AlertRed else GreenPrimary,
+                        color = if (isOverBudget) AlertRed else WarmMetalDark,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
+            // Precious Hero Emerald Number (The single hero highlight)
             Text(
                 text = "Ksh ${"%.2f".format(todaySpend)}",
                 style = FinancialTypography.MoneyDisplay,
-                color = if (isOverBudget) AlertRed else MaterialTheme.colorScheme.primary
+                color = if (isOverBudget) AlertRed else HeroEmeraldDark
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -391,9 +394,9 @@ fun HeroDailyBudgetCard(
                     progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                    color = if (isOverBudget) AlertRed else GreenMid,
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = if (isOverBudget) AlertRed else HeroEmeraldDark,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
 
@@ -420,14 +423,14 @@ fun HeroDailyBudgetCard(
 
 @Composable
 fun MonthlyCashflowCard(
-    income: Double,
-    expense: Double
+    monthIncome: Double,
+    monthExpense: Double
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -437,32 +440,34 @@ fun MonthlyCashflowCard(
         ) {
             Column {
                 Text(
-                    text = "MONTH INCOME",
+                    text = "PERIOD INCOME",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 0.5.sp
                 )
                 Text(
-                    text = "Ksh ${"%.2f".format(income)}",
+                    text = "Ksh ${"%.2f".format(monthIncome)}",
                     style = FinancialTypography.MoneyLarge,
-                    color = GreenMid
+                    color = WarmMetalDark
                 )
             }
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
-                    .height(40.dp)
+                    .height(36.dp)
                     .width(1.dp),
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
 
-            Column(horizontalAlignment = Alignment.End) {
+            Column {
                 Text(
-                    text = "MONTH EXPENSE",
+                    text = "PERIOD OUTFLOW",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 0.5.sp
                 )
                 Text(
-                    text = "Ksh ${"%.2f".format(expense)}",
+                    text = "Ksh ${"%.2f".format(monthExpense)}",
                     style = FinancialTypography.MoneyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -470,6 +475,8 @@ fun MonthlyCashflowCard(
         }
     }
 }
+
+
 
 @Composable
 fun CategoryBreakdownCard(categories: List<CategorySpend>) {
