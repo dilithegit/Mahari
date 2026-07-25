@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Deep Indigo Background -->
-  <rect width="512" height="512" rx="128" fill="#0F172A"/>
+  <!-- Charcoal Background -->
+  <rect width="512" height="512" rx="128" fill="#14171A"/>
 
   <g transform="translate(0, 20)">
-    <!-- Cupped Hand (Blue Tones) -->
-    <!-- Palm & Arm base -->
-    <path d="M 120,380 C 140,430 220,450 320,440 C 390,430 430,370 410,320 C 390,280 340,300 300,320 C 260,340 200,340 160,320 C 130,305 110,340 120,380 Z" fill="#1D4ED8" opacity="0.95"/>
-    <path d="M 140,360 C 180,410 260,430 350,400 C 400,385 420,340 395,310 C 360,270 310,310 270,325 C 220,340 170,330 140,360 Z" fill="#3B82F6"/>
+    <!-- Cupped Hand Silhouette -->
+    <path d="M 120,380 C 140,430 220,450 320,440 C 390,430 430,370 410,320 C 390,280 340,300 300,320 C 260,340 200,340 160,320 C 130,305 110,340 120,380 Z" fill="#1E2225" opacity="0.95"/>
+    <path d="M 140,360 C 180,410 260,430 350,400 C 400,385 420,340 395,310 C 360,270 310,310 270,325 C 220,340 170,330 140,360 Z" fill="#262B2F"/>
     <!-- Gentle Thumb Curve -->
-    <path d="M 130,330 C 110,290 140,250 175,275 C 200,295 180,335 150,340 Z" fill="#60A5FA"/>
+    <path d="M 130,330 C 110,290 140,250 175,275 C 200,295 180,335 150,340 Z" fill="#33383D"/>
 
-    <!-- Three Overlapping Cowrie Shells (Light Green Tones with Notched Underside) -->
+    <!-- Three Overlapping Cowrie Shells (Emerald Palette) -->
     
     <!-- Shell 1 (Left / Back) -->
     <g transform="translate(195, 230) rotate(-20)">
@@ -18,8 +17,8 @@
       <ellipse cx="40" cy="30" rx="36" ry="24" fill="#059669"/>
       <ellipse cx="40" cy="30" rx="30" ry="19" fill="#10B981"/>
       <!-- Inner Notched Slit -->
-      <path d="M 22,30 Q 40,24 58,30" stroke="#0F172A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <path d="M 28,26 L 28,34 M 34,25 L 34,35 M 40,24 L 40,36 M 46,25 L 46,35 M 52,26 L 52,34" stroke="#0F172A" stroke-width="2" fill="none"/>
+      <path d="M 22,30 Q 40,24 58,30" stroke="#14171A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M 28,26 L 28,34 M 34,25 L 34,35 M 40,24 L 40,36 M 46,25 L 46,35 M 52,26 L 52,34" stroke="#14171A" stroke-width="2" fill="none"/>
     </g>
 
     <!-- Shell 2 (Center / Top) -->
@@ -28,8 +27,8 @@
       <ellipse cx="45" cy="35" rx="42" ry="28" fill="#10B981"/>
       <ellipse cx="45" cy="35" rx="35" ry="22" fill="#34D399"/>
       <!-- Inner Notched Slit -->
-      <path d="M 23,35 Q 45,28 67,35" stroke="#0F172A" stroke-width="4" fill="none" stroke-linecap="round"/>
-      <path d="M 30,30 L 30,40 M 37,29 L 37,41 M 45,28 L 45,42 M 53,29 L 53,41 M 60,30 L 60,40" stroke="#0F172A" stroke-width="2.2" fill="none"/>
+      <path d="M 23,35 Q 45,28 67,35" stroke="#14171A" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M 30,30 L 30,40 M 37,29 L 37,41 M 45,28 L 45,42 M 53,29 L 53,41 M 60,30 L 60,40" stroke="#14171A" stroke-width="2.2" fill="none"/>
     </g>
 
     <!-- Shell 3 (Right / Front) -->
@@ -38,8 +37,8 @@
       <ellipse cx="38" cy="26" rx="34" ry="22" fill="#059669"/>
       <ellipse cx="38" cy="26" rx="28" ry="17" fill="#6EE7B7"/>
       <!-- Inner Notched Slit -->
-      <path d="M 20,26 Q 38,21 56,26" stroke="#0F172A" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M 26,23 L 26,29 M 32,22 L 32,30 M 38,21 L 38,31 M 44,22 L 44,30 M 50,23 L 50,29" stroke="#0F172A" stroke-width="1.8" fill="none"/>
+      <path d="M 20,26 Q 38,21 56,26" stroke="#14171A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M 26,23 L 26,29 M 32,22 L 32,30 M 38,21 L 38,31 M 44,22 L 44,30 M 50,23 L 50,29" stroke="#14171A" stroke-width="1.8" fill="none"/>
     </g>
   </g>
 </svg>

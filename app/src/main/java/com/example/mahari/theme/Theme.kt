@@ -13,26 +13,26 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = BluePrimary,
+    primary = EmeraldAccentLight,
     onPrimary = Color.White,
-    primaryContainer = BlueContainerLight,
-    onPrimaryContainer = BlueDeepNavy,
-    
-    secondary = GreenPrimary,
+    primaryContainer = WarmBoneContainerLight,
+    onPrimaryContainer = CharcoalTextPrimaryLight,
+
+    secondary = EmeraldMid,
     onSecondary = Color.White,
-    secondaryContainer = GreenContainerLight,
-    onSecondaryContainer = GreenContainerDark,
-    
-    background = NeutralBgLight,
-    onBackground = NeutralTextPrimaryLight,
-    
-    surface = NeutralSurfaceLight,
-    onSurface = NeutralTextPrimaryLight,
-    surfaceVariant = BlueContainerLight,
-    onSurfaceVariant = NeutralTextSecondaryLight,
-    
-    outline = NeutralBorderLight,
-    
+    secondaryContainer = EmeraldContainerLight,
+    onSecondaryContainer = EmeraldAccentLight,
+
+    background = WarmBoneBgLight,
+    onBackground = CharcoalTextPrimaryLight,
+
+    surface = WarmBoneCardLight,
+    onSurface = CharcoalTextPrimaryLight,
+    surfaceVariant = WarmBoneContainerLight,
+    onSurfaceVariant = CharcoalTextSecondaryLight,
+
+    outline = Color(0xFFD6D4CC),
+
     error = AlertRed,
     onError = Color.White,
     errorContainer = AlertRedContainer,
@@ -40,26 +40,26 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BlueLight,
-    onPrimary = BlueDeepNavy,
-    primaryContainer = BlueContainerDark,
-    onPrimaryContainer = BlueSoft,
-    
-    secondary = GreenLight,
-    onSecondary = GreenContainerDark,
-    secondaryContainer = GreenContainerDark,
-    onSecondaryContainer = GreenLight,
-    
-    background = NeutralBgDark,
-    onBackground = NeutralTextPrimaryDark,
-    
-    surface = NeutralSurfaceDark,
-    onSurface = NeutralTextPrimaryDark,
-    surfaceVariant = NeutralBorderDark,
-    onSurfaceVariant = NeutralTextSecondaryDark,
-    
-    outline = NeutralBorderDark,
-    
+    primary = EmeraldAccentDark,
+    onPrimary = CharcoalBgDark,
+    primaryContainer = CharcoalElevatedDark,
+    onPrimaryContainer = EmeraldAccentDark,
+
+    secondary = EmeraldMid,
+    onSecondary = CharcoalBgDark,
+    secondaryContainer = EmeraldContainerDark,
+    onSecondaryContainer = EmeraldAccentDark,
+
+    background = CharcoalBgDark,
+    onBackground = CharcoalTextPrimaryDark,
+
+    surface = CharcoalCardDark,
+    onSurface = CharcoalTextPrimaryDark,
+    surfaceVariant = CharcoalElevatedDark,
+    onSurfaceVariant = CharcoalTextSecondaryDark,
+
+    outline = Color(0xFF33383D),
+
     error = AlertRed,
     onError = Color.White,
     errorContainer = Color(0xFF450A0A),
@@ -72,7 +72,7 @@ fun MahariTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
