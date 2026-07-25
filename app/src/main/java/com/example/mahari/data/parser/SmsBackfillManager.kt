@@ -65,7 +65,7 @@ object SmsBackfillManager {
                         val parsed = MpesaParser.parse(body)
                         if (parsed != null) {
                             val category = Categorizer.categorize(parsed.merchantOrParty, parsed.type, mappingDao)
-                            val timestamp = if (parsed.timestamp > 0) parsed.timestamp else date
+                            val timestamp = MpesaParser.extractTransactionTimestamp(parsed.rawText, date)
                             val entity = TransactionEntity(
                                 code = parsed.code,
                                 amount = parsed.amount,

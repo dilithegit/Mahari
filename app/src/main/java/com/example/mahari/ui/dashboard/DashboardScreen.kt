@@ -49,6 +49,16 @@ fun DashboardScreen(
     var showBudgetDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
+
+    if (showShareDialog) {
+        com.example.mahari.ui.share.ShareDashboardDialog(
+            todaySpend = uiState.todaySpend,
+            dailyBudgetLimit = uiState.dailyBudgetLimit,
+            isDarkMode = isDarkMode,
+            onDismiss = { showShareDialog = false }
+        )
+    }
 
     if (showDatePickerDialog) {
         DateRangePickerDialog(
@@ -126,6 +136,9 @@ fun DashboardScreen(
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = { showShareDialog = true }) {
+                            Text("📤", fontSize = 20.sp)
+                        }
                         IconButton(onClick = { showSettingsDialog = true }) {
                             Text("⚙️", fontSize = 20.sp)
                         }
@@ -624,9 +637,26 @@ fun RecategorizeDialog(
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            Button(
+                onClick = {
+                    com.example.mahari.util.ImageCaptureUtils.generateAndShareCardImage(
+                        context = ctx,
+                        title = "M-Pesa Transaction Receipt",
+                        amountText = "${if (!transaction.isExpense) "+" else ""}Ksh ${"%.2f".format(transaction.amount)}",
+                        subtitle = "${transaction.merchantOrParty} • ${transaction.code}",
+                        isExpense = transaction.isExpense,
+                        isDarkMode = false
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = WarmMetalDark)
+            ) {
+                Text("📷 Share Receipt")
+            }
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
 }

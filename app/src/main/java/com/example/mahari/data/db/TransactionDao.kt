@@ -8,6 +8,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun getAllTransactionsFlow(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions")
+    suspend fun getAllTransactionsSync(): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE timestamp >= :startTime ORDER BY timestamp DESC")
     fun getTransactionsSince(startTime: Long): Flow<List<TransactionEntity>>
 

@@ -1,11 +1,61 @@
 package com.example.mahari.data.parser
 
+import java.util.Calendar
 import java.util.regex.Pattern
 
 object MpesaParser {
 
     private fun parseAmount(amountStr: String): Double {
         return amountStr.replace(",", "").toDoubleOrNull() ?: 0.0
+    }
+
+    fun extractTransactionTimestamp(smsBody: String, fallbackDate: Long): Long {
+        try {
+            val datePattern = Pattern.compile(
+                """on\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+(?:at\s+)?(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)""",
+                Pattern.CASE_INSENSITIVE
+            )
+            val matcher = datePattern.matcher(smsBody)
+            if (matcher.find()) {
+                val dateStr = matcher.group(1) ?: ""
+                val timeStr = matcher.group(2) ?: ""
+
+                val dateParts = dateStr.split("/")
+                if (dateParts.size == 3) {
+                    val day = dateParts[0].toInt()
+                    val month = dateParts[1].toInt() - 1
+                    var year = dateParts[2].toInt()
+                    if (year < 100) year += 2000
+
+                    var hour = 0
+                    var minute = 0
+                    val cleanTime = timeStr.trim().uppercase()
+                    val isPm = cleanTime.endsWith("PM")
+                    val isAm = cleanTime.endsWith("AM")
+                    val rawTime = cleanTime.replace("AM", "").replace("PM", "").trim()
+                    val timeParts = rawTime.split(":")
+                    if (timeParts.isNotEmpty()) hour = timeParts[0].toInt()
+                    if (timeParts.size >= 2) minute = timeParts[1].toInt()
+
+                    if (isPm && hour < 12) hour += 12
+                    if (isAm && hour == 12) hour = 0
+
+                    val cal = Calendar.getInstance().apply {
+                        set(Calendar.YEAR, year)
+                        set(Calendar.MONTH, month)
+                        set(Calendar.DAY_OF_MONTH, day)
+                        set(Calendar.HOUR_OF_DAY, hour)
+                        set(Calendar.MINUTE, minute)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    return cal.timeInMillis
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return if (fallbackDate > 0) fallbackDate else System.currentTimeMillis()
     }
 
     fun parse(smsBody: String): ParsedMpesaTransaction? {

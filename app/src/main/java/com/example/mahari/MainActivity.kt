@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
+import com.example.mahari.data.migration.TransactionMigrationManager
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.MahariTheme
 import com.example.mahari.ui.dashboard.DashboardScreen
@@ -46,7 +47,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Enforce FLAG_SECURE to block screen captures and task switcher data leaks
+        // Enforce FLAG_SECURE to block OS-level screen captures and task switcher data leaks
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
@@ -65,6 +66,13 @@ class MainActivity : FragmentActivity() {
             var isOnboardingFinished by remember { mutableStateOf(securityManager.isOnboardingComplete()) }
             var isUnlocked by remember {
                 mutableStateOf(!securityManager.isBiometricEnabled() && securityManager.getPin() == null)
+            }
+
+            LaunchedEffect(Unit) {
+                TransactionMigrationManager.runOneTimeDateMigration(
+                    context = this@MainActivity,
+                    transactionDao = database.transactionDao()
+                )
             }
 
             MahariTheme(darkTheme = isDarkMode) {
