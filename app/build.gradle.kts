@@ -104,15 +104,18 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
 
 
+  // Security & Biometric
+  implementation(libs.androidx.security.crypto)
+  implementation(libs.androidx.biometric)
+
   // Room Database
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    enabled = false
-}
+
+
 
 
 
