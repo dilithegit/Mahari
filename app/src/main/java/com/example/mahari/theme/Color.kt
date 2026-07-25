@@ -37,3 +37,12 @@ val NeutralSurfaceDark = Color(0xFF161E2E)
 val NeutralBorderDark = Color(0xFF26334D)
 val NeutralTextPrimaryDark = Color(0xFFF8FAFC)
 val NeutralTextSecondaryDark = Color(0xFF94A3B8)
+
+// Color Aliases
+val PrimaryNavy = BluePrimary
+val PrimaryContainer = BlueContainerLight
+val IncomeMint = GreenPrimary
+val IncomeMintContainer = GreenContainerLight
+val NavyPrimary = BluePrimary
+val PowderBlueContainer = BlueContainerLight
+
