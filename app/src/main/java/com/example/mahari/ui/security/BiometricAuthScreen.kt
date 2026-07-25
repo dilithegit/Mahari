@@ -29,6 +29,18 @@ fun BiometricAuthScreen(
     onUnlocked: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? FragmentActivity
+
+    DisposableEffect(Unit) {
+        activity?.window?.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        onDispose {
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
     var pinInput by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 

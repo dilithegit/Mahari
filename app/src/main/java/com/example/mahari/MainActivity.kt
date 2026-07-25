@@ -47,12 +47,6 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Enforce FLAG_SECURE to block OS-level screen captures and task switcher data leaks
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE
-        )
-
         enableEdgeToEdge()
 
         val appContainer = (application as MahariApplication).container

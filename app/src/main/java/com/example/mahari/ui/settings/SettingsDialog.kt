@@ -214,6 +214,24 @@ fun SettingsDialog(
                     Text(if (isBackfilling) "Rescanning Inbox..." else "🔄 Re-run SMS Backfill")
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        val isIgnored = com.example.mahari.util.BatteryOptimizationManager.isIgnoringBatteryOptimizations(context)
+                        if (!isIgnored) {
+                            com.example.mahari.util.BatteryOptimizationManager.requestBatteryOptimizationExemption(context)
+                            Toast.makeText(context, "Opening battery optimization settings...", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Background battery exemption active!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = PrimaryNavy)
+                ) {
+                    Text("⚡ Check Background Reliability")
+                }
+
                 HorizontalDivider()
 
                 // Section 5: Security

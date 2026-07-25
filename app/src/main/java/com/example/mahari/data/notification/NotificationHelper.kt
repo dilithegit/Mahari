@@ -26,18 +26,24 @@ object NotificationHelper {
             notificationManager.createNotificationChannel(channel)
         }
 
+        val cleanMerchant = if (latestMerchant.length > 25) {
+            latestMerchant.take(25) + "..."
+        } else {
+            latestMerchant
+        }
+
         val (title, text) = when (evaluation.alertLevel) {
             BudgetAlertLevel.OVER_BUDGET_100 -> Pair(
                 "🚨 Daily Budget Exceeded!",
-                "Ksh ${"%.2f".format(latestAmount)} at $latestMerchant pushed today's spend to Ksh ${"%.2f".format(evaluation.todaySpend)} (Limit: Ksh ${"%.2f".format(evaluation.dailyLimit)})."
+                "Ksh ${"%.2f".format(latestAmount)} at $cleanMerchant pushed today's spend to Ksh ${"%.2f".format(evaluation.todaySpend)} (Limit: Ksh ${"%.2f".format(evaluation.dailyLimit)})."
             )
             BudgetAlertLevel.WARNING_95 -> Pair(
                 "⚠️ 95% Daily Budget Reached",
-                "Ksh ${"%.2f".format(latestAmount)} at $latestMerchant. Remaining budget is only Ksh ${"%.2f".format(evaluation.remainingBudget)}."
+                "Ksh ${"%.2f".format(latestAmount)} at $cleanMerchant. Remaining budget is only Ksh ${"%.2f".format(evaluation.remainingBudget)}."
             )
             BudgetAlertLevel.WARNING_80 -> Pair(
                 "💡 80% Daily Budget Notice",
-                "You've spent Ksh ${"%.2f".format(evaluation.todaySpend)} of today's Ksh ${"%.2f".format(evaluation.dailyLimit)} limit."
+                "Spent Ksh ${"%.2f".format(evaluation.todaySpend)} of today's Ksh ${"%.2f".format(evaluation.dailyLimit)} limit."
             )
             BudgetAlertLevel.NORMAL -> return
         }

@@ -51,6 +51,18 @@
 - **Dynamic Keyword Matrix**: Auto-categorizes merchants, dining, supermarkets, fuel, and transport.
 - **Learning Memory**: Remembers user recategorizations in a local Room database (`merchant_category_mappings`) and applies them to future transactions from that merchant.
 
+### 📐 7. Systemic Layout & Text Wrapping Engine
+- **Truncation & Ellipsis**: Applied `maxLines = 1` and `TextOverflow.Ellipsis` across transaction lists, search items, and cards, preventing long paybill/till merchant names from clipping or breaking layouts.
+- **Notification Formatting**: Front-loads essential transaction details (`Ksh {amount} [{category}] at {merchant}`) and gracefully truncates long merchant text before Android system boundaries.
+
+### 🛡️ 8. Selective `FLAG_SECURE` Scoping
+- **OS Screenshots Enabled**: Removed global `FLAG_SECURE` from `MainActivity`, allowing standard OS hardware-button screenshots across Dashboard and Transaction Detail screens.
+- **Lock Screen Protection**: `FLAG_SECURE` is retained **exclusively** on `BiometricAuthScreen` to prevent PIN/Biometric theft in screen captures or task switchers.
+
+### ⚡ 9. Background Battery Optimization Exemption
+- **Onboarding Rationale & Exemption Step**: Step 4 in onboarding sequence explains background listener needs and prompts for `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` exemption (non-blocking).
+- **Background Reliability Re-Entrant Check**: Includes a **"⚡ Check Background Reliability"** action button in Settings for manual verification anytime.
+
 ---
 
 ## 🎨 Design System & Palette

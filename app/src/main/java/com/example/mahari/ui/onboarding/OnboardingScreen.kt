@@ -2,10 +2,7 @@ package com.example.mahari.ui.onboarding
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,8 +24,8 @@ import com.example.mahari.data.parser.BackfillResult
 import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.*
+import com.example.mahari.util.BatteryOptimizationManager
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun OnboardingScreen(
@@ -39,7 +36,7 @@ fun OnboardingScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentStep by remember { mutableStateOf(1) } // 1: Welcome, 2: Profile, 3: SMS Permission, 4: Budget Setup
+    var currentStep by remember { mutableStateOf(1) } // 1: Welcome, 2: Profile, 3: SMS, 4: Battery Opt, 5: Budget
 
     // Profile State
     var userName by remember { mutableStateOf("") }
@@ -54,8 +51,13 @@ fun OnboardingScreen(
     var hasAttemptedPermission by remember { mutableStateOf(false) }
     var isBackfilling by remember { mutableStateOf(false) }
     var hasBackfillError by remember { mutableStateOf(false) }
-    var backfillProgress by remember { mutableStateOf(0 to 0) } // processed to total
+    var backfillProgress by remember { mutableStateOf(0 to 0) }
     var backfillResult by remember { mutableStateOf<BackfillResult?>(null) }
+
+    // Battery Optimization State
+    var isBatteryOptIgnored by remember {
+        mutableStateOf(BatteryOptimizationManager.isIgnoringBatteryOptimizations(context))
+    }
 
     // Budget Setup State
     var monthlyBudgetInput by remember { mutableStateOf("30000") }
@@ -85,7 +87,6 @@ fun OnboardingScreen(
     }
 
     fun requestPermissions() {
-
         hasAttemptedPermission = true
         val activity = context as? MainActivity
         if (activity != null) {
@@ -103,8 +104,6 @@ fun OnboardingScreen(
             }
         }
     }
-
-
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -131,7 +130,7 @@ fun OnboardingScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 LinearProgressIndicator(
-                    progress = { currentStep / 4.0f },
+                    progress = { currentStep / 5.0f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp),
@@ -168,13 +167,20 @@ fun OnboardingScreen(
                         backfillProgress = backfillProgress,
                         backfillResult = backfillResult,
                         onRequestPermission = { requestPermissions() },
-
                         onRetryBackfill = { triggerBackfill() },
                         onNext = { currentStep = 4 }
                     )
 
+                    4 -> BatteryOptimizationStep(
+                        isIgnored = isBatteryOptIgnored,
+                        onRequestExemption = {
+                            BatteryOptimizationManager.requestBatteryOptimizationExemption(context)
+                            isBatteryOptIgnored = BatteryOptimizationManager.isIgnoringBatteryOptimizations(context)
+                        },
+                        onNext = { currentStep = 5 }
+                    )
 
-                    4 -> BudgetSetupStep(
+                    5 -> BudgetSetupStep(
                         userName = userName,
                         monthlyInput = monthlyBudgetInput,
                         onMonthlyInputChange = { monthlyBudgetInput = it },
@@ -454,13 +460,79 @@ private fun SmsPermissionStep(
                     modifier = Modifier.fillMaxWidth(0.85f).height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
                 ) {
-                    Text("Next: Budget Setup", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Next: Background Reliability", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
 
+@Composable
+private fun BatteryOptimizationStep(
+    isIgnored: Boolean,
+    onRequestExemption: () -> Unit,
+    onNext: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Background Reliability",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Mahari needs to stay awake in the background to catch new M-Pesa messages instantly. OEM phone skins (Samsung, Xiaomi, OnePlus) aggressively restrict background apps by default.",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = PrimaryContainer),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isIgnored) "⚡ Unrestricted Background Access Enabled" else "⚡ Recommended Background Setup",
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryNavy
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (isIgnored) "Mahari is exempt from aggressive system app-killing." else "Allowing background exemption ensures zero missed M-Pesa payments.",
+                    fontSize = 12.sp,
+                    color = PrimaryNavy,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Button(
+            onClick = onRequestExemption,
+            modifier = Modifier.fillMaxWidth(0.85f).height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy)
+        ) {
+            Text(if (isIgnored) "Re-check Battery Status" else "Grant Battery Exemption", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onNext) {
+            Text(if (isIgnored) "Continue to Budget Setup" else "Skip for Now", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
 
 @Composable
 private fun BudgetSetupStep(
