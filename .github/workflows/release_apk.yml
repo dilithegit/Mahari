@@ -9,6 +9,8 @@ jobs:
   build-release:
     name: Build & Publish Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -57,7 +59,7 @@ jobs:
           files: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/app-release.apk.sha256
-          title: "Mahari v3.0.0 Release (${{ github.ref_name }})"
+          name: "Mahari v3.0.0 Release (${{ github.ref_name }})"
           body: |
             ## 📱 Mahari Direct-Install Release Package
 
