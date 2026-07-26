@@ -23,6 +23,7 @@ object StatisticalRecapEngine {
         val month0 = (dateParts.getOrNull(1)?.toIntOrNull() ?: 7) - 1
 
         val cal = Calendar.getInstance().apply {
+            clear()
             set(Calendar.YEAR, year)
             set(Calendar.MONTH, month0)
             set(Calendar.DAY_OF_MONTH, 1)
@@ -35,11 +36,14 @@ object StatisticalRecapEngine {
         val startOfMonth = cal.timeInMillis
         val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         val endCal = Calendar.getInstance().apply {
-            timeInMillis = startOfMonth
+            clear()
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month0)
             set(Calendar.DAY_OF_MONTH, maxDay)
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
             set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
         }
         val endOfMonth = endCal.timeInMillis
 
@@ -53,7 +57,11 @@ object StatisticalRecapEngine {
                 totalSpend = 0.0,
                 topCategory = "None",
                 shapExplanationsJson = "[\"No M-Pesa expense receipts logged during this month.\"]",
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                financialScore = null,
+                confidenceRating = null,
+                scoreBreakdownJson = null,
+                isCloudEnhanced = false
             )
         }
 
@@ -69,16 +77,22 @@ object StatisticalRecapEngine {
         var priorMonthsAvailable = 0
         for (i in 1..3) {
             val pCal = Calendar.getInstance().apply {
-                timeInMillis = startOfMonth
+                clear()
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month0)
+                set(Calendar.DAY_OF_MONTH, 1)
                 add(Calendar.MONTH, -i)
             }
             val pStart = pCal.timeInMillis
             val pMax = pCal.getActualMaximum(Calendar.DAY_OF_MONTH)
             val pEndCal = Calendar.getInstance().apply {
+                clear()
                 timeInMillis = pStart
                 set(Calendar.DAY_OF_MONTH, pMax)
                 set(Calendar.HOUR_OF_DAY, 23)
                 set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
             }
             val pEnd = pEndCal.timeInMillis
             val pTx = allTx.filter { it.timestamp in pStart..pEnd && it.isExpense }
@@ -147,13 +161,25 @@ object StatisticalRecapEngine {
             "$topCategory spend remained controlled; under budget by Ksh ${"%.0f".format(diff)}"
         }
 
+        // Compute Financial Score
+        val scoreResult = FinancialScoreEngine.computeFinancialScore(
+            monthTx = monthTx,
+            prior3MonthsTx = prior3MonthsTx,
+            priorMonthsAvailable = priorMonthsAvailable,
+            monthlyBudget = monthlyBudget
+        )
+
         return RecapEntity(
             monthYear = monthYear,
             headlineInsight = headline,
             totalSpend = totalSpend,
             topCategory = topCategory,
             shapExplanationsJson = jsonExplanations,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            financialScore = scoreResult.financialScore,
+            confidenceRating = scoreResult.confidenceRating,
+            scoreBreakdownJson = scoreResult.breakdownJson,
+            isCloudEnhanced = false
         )
     }
 

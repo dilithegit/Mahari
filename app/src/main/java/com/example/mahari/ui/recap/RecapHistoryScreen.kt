@@ -21,7 +21,6 @@ import com.example.mahari.data.db.RecapEntity
 import com.example.mahari.data.recap.StatisticalRecapEngine
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.HeroEmeraldDark
-import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
 import kotlinx.coroutines.launch
@@ -74,7 +73,7 @@ fun RecapHistoryScreen(
                 )
                 database.recapDao().insertRecap(newRecap)
                 recaps = database.recapDao().getAllRecaps()
-                Toast.makeText(context, "Monthly recap generated!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Monthly recap & score generated!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(context, "Failed to generate recap.", Toast.LENGTH_SHORT).show()
@@ -118,12 +117,46 @@ fun RecapHistoryScreen(
                         color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
-                            text = "Local Statistical Engine",
+                            text = if (r.isCloudEnhanced) "Enhanced Insights" else "Local Statistical Engine",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = WarmMetalDark,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    }
+                }
+
+                // Financial Score Section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("FINANCIAL HEALTH SCORE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (r.financialScore != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("${"%.1f".format(r.financialScore)}%", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = HeroEmeraldDark)
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = WarmMetalDark.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "Data Confidence: ${"%.0f".format(r.confidenceRating ?: 0.0)}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = WarmMetalDark,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text("Score not tracked for this month", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
 
@@ -180,7 +213,7 @@ fun RecapHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Insights & Recaps", fontWeight = FontWeight.Bold) },
+                title = { Text("Insights & Recaps v3.0", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Back", color = WarmMetalDark, fontWeight = FontWeight.Bold)
@@ -215,15 +248,15 @@ fun RecapHistoryScreen(
                             modifier = Modifier.padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("MONTHLY FINANCIAL RECAP ENGINE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
-                            Text("Compute statistical deltas vs. 3-month averages, merchant visit anomalies, and budget variance.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("MONTHLY FINANCIAL HEALTH ENGINE v3.0", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
+                            Text("4-Factor Health Score (Budget, Savings, Consistency, Debt Reliance) & Data Volume Confidence Rating.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Button(
                                 onClick = { generateCurrentRecap() },
                                 enabled = !isGenerating,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = WarmMetalDark)
                             ) {
-                                Text(if (isGenerating) "Computing Insights..." else "⚡ Generate $currentMonthYear Recap")
+                                Text(if (isGenerating) "Computing Score & Insights..." else "⚡ Generate $currentMonthYear Recap")
                             }
                         }
                     }
@@ -287,10 +320,10 @@ fun RecapHistoryScreen(
                                         color = WarmMetalDark
                                     )
                                     Text(
-                                        text = "Ksh ${"%.0f".format(r.totalSpend)}",
+                                        text = if (r.financialScore != null) "Score: ${"%.1f".format(r.financialScore)}%" else "Score: N/A",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = if (r.financialScore != null) HeroEmeraldDark else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 

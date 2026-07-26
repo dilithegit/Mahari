@@ -1,9 +1,17 @@
 package com.example.mahari.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["merchantOrParty"]),
+        Index(value = ["category"])
+    ]
+)
 data class TransactionEntity(
     @PrimaryKey
     val code: String,

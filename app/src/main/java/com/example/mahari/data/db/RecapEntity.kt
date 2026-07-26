@@ -11,5 +11,9 @@ data class RecapEntity(
     val totalSpend: Double,
     val topCategory: String,
     val shapExplanationsJson: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val financialScore: Double? = null,
+    val confidenceRating: Double? = null,
+    val scoreBreakdownJson: String? = null,
+    val isCloudEnhanced: Boolean = false
 )
