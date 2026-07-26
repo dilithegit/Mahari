@@ -1,11 +1,15 @@
 package com.example.mahari.ui.dashboard
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mahari.data.db.BudgetEntity
+import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.db.TransactionEntity
 import com.example.mahari.data.model.DateScopeMode
+import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.repository.TransactionRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -26,7 +30,8 @@ data class DashboardUiState(
     val transactions: List<TransactionEntity> = emptyList(),
     val searchQuery: String = "",
     val isSearchAllTime: Boolean = false,
-    val selectedCategoryFilter: String? = null
+    val selectedCategoryFilter: String? = null,
+    val isRefreshing: Boolean = false
 )
 
 class DashboardViewModel(
@@ -45,6 +50,11 @@ class DashboardViewModel(
     private val _selectedCategoryFilter = MutableStateFlow<String?>(null)
     val selectedCategoryFilter: StateFlow<String?> = _selectedCategoryFilter.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private var lastFullScanTime: Long = 0L
+
     @Suppress("UNCHECKED_CAST")
     val uiState: StateFlow<DashboardUiState> = combine(
         _dateScopeMode,
@@ -52,7 +62,8 @@ class DashboardViewModel(
         repository.currentBudget,
         _searchQuery,
         _isSearchAllTime,
-        _selectedCategoryFilter
+        _selectedCategoryFilter,
+        _isRefreshing
     ) { flows: Array<Any?> ->
         val scopeMode = flows[0] as DateScopeMode
         val allTx = flows[1] as List<TransactionEntity>
@@ -60,15 +71,13 @@ class DashboardViewModel(
         val query = flows[3] as String
         val searchAllTime = flows[4] as Boolean
         val categoryFilter = flows[5] as String?
+        val refreshing = flows[6] as Boolean
 
         val startTs = scopeMode.startTimestamp
         val endTs = scopeMode.endTimestamp
 
-
-        // 1. Transactions strictly within active DateScope
         val scopedTx = allTx.filter { it.timestamp in startTs..endTs }
 
-        // 2. Today's Spend (Calculated for current day)
         val nowCal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -78,11 +87,9 @@ class DashboardViewModel(
         val startOfToday = nowCal.timeInMillis
         val todaySpent = allTx.filter { it.timestamp >= startOfToday && it.isExpense }.sumOf { it.amount }
 
-        // 3. Period Income & Expense
         val periodIncome = scopedTx.filter { !it.isExpense }.sumOf { it.amount }
         val periodExpense = scopedTx.filter { it.isExpense }.sumOf { it.amount }
 
-        // 4. Category Breakdown within DateScope
         val expenseTx = scopedTx.filter { it.isExpense }
         val totalExp = expenseTx.sumOf { it.amount }
         val categorySpends = if (totalExp > 0) {
@@ -98,7 +105,6 @@ class DashboardViewModel(
                 .sortedByDescending { it.totalAmount }
         } else emptyList()
 
-        // 5. Search Filtering (Respects DateScope UNLESS isSearchAllTime is TRUE)
         val poolForSearch = if (searchAllTime) allTx else scopedTx
         val filteredTx = poolForSearch.filter { tx ->
             val matchesQuery = query.isEmpty() ||
@@ -121,13 +127,39 @@ class DashboardViewModel(
             transactions = filteredTx,
             searchQuery = query,
             isSearchAllTime = searchAllTime,
-            selectedCategoryFilter = categoryFilter
+            selectedCategoryFilter = categoryFilter,
+            isRefreshing = refreshing
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState()
     )
+
+    fun refreshDashboard(context: Context, database: MahariDatabase) {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            // 1. Fast cosmetic re-query
+            delay(300)
+
+            // 2. Throttled real SMS re-scan (once every 3 minutes)
+            val now = System.currentTimeMillis()
+            if (now - lastFullScanTime > 3 * 60 * 1000L) {
+                try {
+                    SmsBackfillManager.performOneTimeBackfill(
+                        context = context,
+                        transactionDao = database.transactionDao(),
+                        mappingDao = database.merchantMappingDao()
+                    )
+                    lastFullScanTime = now
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            _isRefreshing.value = false
+        }
+    }
 
     fun onPreviousMonth() {
         val current = _dateScopeMode.value

@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,17 +111,35 @@ fun DashboardScreen(
     val name = securityManager.getUserName()
     val greetingText = if (name.isNotEmpty()) "$greetingTime, $name" else "M-Pesa Financial Intelligence"
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pullToRefreshState = rememberPullToRefreshState()
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refreshDashboard(context, database) },
+            state = pullToRefreshState,
+            modifier = Modifier.fillMaxSize(),
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = uiState.isRefreshing,
+                    color = WarmMetalDark,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Header
             item {
                 Row(
@@ -305,6 +324,7 @@ fun DashboardScreen(
                 )
             }
         }
+    }
     }
 
     if (showFullListSheet) {
