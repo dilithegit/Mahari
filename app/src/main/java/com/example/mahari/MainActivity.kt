@@ -2,7 +2,6 @@ package com.example.mahari
 
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
@@ -11,10 +10,22 @@ import androidx.fragment.app.FragmentActivity
 import com.example.mahari.data.migration.TransactionMigrationManager
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.MahariTheme
+import com.example.mahari.ui.category.CategoryDetailScreen
 import com.example.mahari.ui.dashboard.DashboardScreen
 import com.example.mahari.ui.dashboard.DashboardViewModel
+import com.example.mahari.ui.merchant.MerchantDetailScreen
 import com.example.mahari.ui.onboarding.OnboardingScreen
+import com.example.mahari.ui.recap.RecapHistoryScreen
 import com.example.mahari.ui.security.BiometricAuthScreen
+import com.example.mahari.ui.settings.DataPrivacyScreen
+
+sealed class AppScreen {
+    object Dashboard : AppScreen()
+    data class MerchantDetail(val merchantName: String) : AppScreen()
+    data class CategoryDetail(val categoryName: String) : AppScreen()
+    object RecapHistory : AppScreen()
+    object DataPrivacy : AppScreen()
+}
 
 class MainActivity : FragmentActivity() {
 
@@ -61,6 +72,9 @@ class MainActivity : FragmentActivity() {
             var isUnlocked by remember {
                 mutableStateOf(!securityManager.isBiometricEnabled() && securityManager.getPin() == null)
             }
+            var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Dashboard) }
+
+            val uiState by viewModel.uiState.collectAsState()
 
             LaunchedEffect(Unit) {
                 TransactionMigrationManager.runOneTimeDateMigration(
@@ -88,13 +102,65 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     else -> {
-                        DashboardScreen(
-                            viewModel = viewModel,
-                            database = database,
-                            securityManager = securityManager,
-                            isDarkMode = isDarkMode,
-                            onToggleTheme = { isDarkMode = it }
-                        )
+                        when (val screen = currentScreen) {
+                            AppScreen.Dashboard -> {
+                                DashboardScreen(
+                                    viewModel = viewModel,
+                                    database = database,
+                                    securityManager = securityManager,
+                                    isDarkMode = isDarkMode,
+                                    onToggleTheme = { isDarkMode = it },
+                                    onNavigateToMerchant = { merchant ->
+                                        currentScreen = AppScreen.MerchantDetail(merchant)
+                                    },
+                                    onNavigateToCategory = { category ->
+                                        currentScreen = AppScreen.CategoryDetail(category)
+                                    },
+                                    onNavigateToRecapHistory = {
+                                        currentScreen = AppScreen.RecapHistory
+                                    },
+                                    onNavigateToDataPrivacy = {
+                                        currentScreen = AppScreen.DataPrivacy
+                                    }
+                                )
+                            }
+                            is AppScreen.MerchantDetail -> {
+                                MerchantDetailScreen(
+                                    merchantName = screen.merchantName,
+                                    transactions = uiState.transactions,
+                                    onRecategorizeMerchant = { merchant, newCategory ->
+                                        viewModel.recategorizeMerchant(merchant, newCategory)
+                                    },
+                                    onBack = { currentScreen = AppScreen.Dashboard }
+                                )
+                            }
+                            is AppScreen.CategoryDetail -> {
+                                CategoryDetailScreen(
+                                    categoryName = screen.categoryName,
+                                    periodLabel = uiState.dateScopeMode.label,
+                                    transactions = uiState.transactions,
+                                    categoryBudgetLimit = null,
+                                    onSetCategoryBudget = { /* Category budget target saved */ },
+                                    onSelectMerchant = { merchant ->
+                                        currentScreen = AppScreen.MerchantDetail(merchant)
+                                    },
+                                    onBack = { currentScreen = AppScreen.Dashboard }
+                                )
+                            }
+                            AppScreen.RecapHistory -> {
+                                RecapHistoryScreen(
+                                    database = database,
+                                    onBack = { currentScreen = AppScreen.Dashboard }
+                                )
+                            }
+                            AppScreen.DataPrivacy -> {
+                                DataPrivacyScreen(
+                                    database = database,
+                                    securityManager = securityManager,
+                                    onBack = { currentScreen = AppScreen.Dashboard }
+                                )
+                            }
+                        }
                     }
                 }
             }

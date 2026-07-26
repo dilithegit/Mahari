@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,7 +33,9 @@ fun SettingsDialog(
     database: MahariDatabase,
     securityManager: SecurityManager,
     onDismiss: () -> Unit,
-    onBudgetUpdated: (Double) -> Unit
+    onBudgetUpdated: (Double) -> Unit,
+    onNavigateToDataPrivacy: () -> Unit = {},
+    onNavigateToRecapHistory: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -230,6 +233,32 @@ fun SettingsDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = PrimaryNavy)
                 ) {
                     Text("⚡ Check Background Reliability")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToDataPrivacy()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy, contentColor = Color.White)
+                ) {
+                    Text("⚙️ Advanced Data & Privacy Control →")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToRecapHistory()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryNavy, contentColor = Color.White)
+                ) {
+                    Text("📊 Past Monthly Recaps & Insights →")
                 }
 
                 HorizontalDivider()

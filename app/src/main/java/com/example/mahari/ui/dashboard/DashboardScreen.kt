@@ -42,7 +42,11 @@ fun DashboardScreen(
     database: MahariDatabase,
     securityManager: SecurityManager,
     isDarkMode: Boolean,
-    onToggleTheme: (Boolean) -> Unit
+    onToggleTheme: (Boolean) -> Unit,
+    onNavigateToMerchant: (String) -> Unit = {},
+    onNavigateToCategory: (String) -> Unit = {},
+    onNavigateToRecapHistory: () -> Unit = {},
+    onNavigateToDataPrivacy: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTxForRecategorize by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -77,7 +81,9 @@ fun DashboardScreen(
             onDismiss = { showSettingsDialog = false },
             onBudgetUpdated = { newLimit ->
                 viewModel.updateMonthlyBudget(newLimit)
-            }
+            },
+            onNavigateToDataPrivacy = onNavigateToDataPrivacy,
+            onNavigateToRecapHistory = onNavigateToRecapHistory
         )
     }
 
@@ -231,7 +237,10 @@ fun DashboardScreen(
                 }
 
                 item {
-                    CategoryBreakdownCard(categories = uiState.topCategories)
+                    CategoryBreakdownCard(
+                        categories = uiState.topCategories,
+                        onCategoryClick = onNavigateToCategory
+                    )
                 }
             }
 
@@ -481,7 +490,10 @@ fun MonthlyCashflowCard(
 
 
 @Composable
-fun CategoryBreakdownCard(categories: List<CategorySpend>) {
+fun CategoryBreakdownCard(
+    categories: List<CategorySpend>,
+    onCategoryClick: (String) -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -492,7 +504,13 @@ fun CategoryBreakdownCard(categories: List<CategorySpend>) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             categories.take(4).forEach { cat ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCategoryClick(cat.category) }
+                        .padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -500,13 +518,14 @@ fun CategoryBreakdownCard(categories: List<CategorySpend>) {
                         Text(
                             text = cat.category,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Ksh ${"%.2f".format(cat.totalAmount)}",
+                            text = "Ksh ${"%.2f".format(cat.totalAmount)} →",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                     LinearProgressIndicator(
