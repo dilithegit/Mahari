@@ -86,7 +86,7 @@ class StatisticalRecapEngineTest {
         assertEquals(1200.0, recap.totalSpend, 0.01)
         assertEquals("Food & Dining", recap.topCategory)
         assertFalse("Should not throw divide by zero", recap.shapExplanationsJson.contains("NaN"))
-        assertTrue(recap.shapExplanationsJson.contains("Food & Dining was your primary spending driver"))
+        assertTrue(recap.shapExplanationsJson.contains("Food & Dining was your main spending category"))
     }
 
     @Test
@@ -102,7 +102,7 @@ class StatisticalRecapEngineTest {
 
         assertEquals(3000.0, recap.totalSpend, 0.01)
         assertEquals("Utilities", recap.topCategory)
-        assertTrue(recap.shapExplanationsJson.contains("50% above your 3-month rolling baseline"))
+        assertTrue(recap.shapExplanationsJson.contains("about 50% more than what you usually spend"))
     }
 
     @Test
@@ -117,7 +117,7 @@ class StatisticalRecapEngineTest {
         val dao = FakeTransactionDao(txs)
         val recap = StatisticalRecapEngine.generateRecap("2026-07", dao, 30000.0)
 
-        assertTrue(recap.shapExplanationsJson.contains("50% above your 3-month rolling baseline"))
+        assertTrue(recap.shapExplanationsJson.contains("about 50% more than what you usually spend"))
     }
 
     @Test

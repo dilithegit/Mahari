@@ -1,5 +1,6 @@
 package com.example.mahari.data.recap
 
+import com.example.mahari.data.db.RecapDao
 import com.example.mahari.data.db.RecapEntity
 import com.example.mahari.data.db.TransactionDao
 import com.example.mahari.data.db.TransactionEntity
@@ -63,7 +64,7 @@ object StatisticalRecapEngine {
 
         val explanations = mutableListOf<String>()
 
-        // 1. Category Delta vs 3-Month Rolling Average
+        // 1. Plain-Language Category Comparison
         val prior3MonthsTx = mutableListOf<TransactionEntity>()
         var priorMonthsAvailable = 0
         for (i in 1..3) {
@@ -94,60 +95,46 @@ object StatisticalRecapEngine {
 
             if (baselineAvg > 0) {
                 val variancePct = ((topCatSpend - baselineAvg) / baselineAvg) * 100.0
-                val varianceDirection = if (variancePct >= 0) "above" else "below"
+                val varianceDirection = if (variancePct >= 0) "more than" else "less than"
                 explanations.add(
-                    "$topCategory spend was ${"%.0f".format(kotlin.math.abs(variancePct))}% $varianceDirection your $priorMonthsAvailable-month rolling baseline average of Ksh ${"%.0f".format(baselineAvg)}."
+                    "You spent Ksh ${"%.2f".format(topCatSpend)} on $topCategory — about ${"%.0f".format(kotlin.math.abs(variancePct))}% $varianceDirection what you usually spend on $topCategory."
                 )
             } else {
                 explanations.add(
-                    "$topCategory was your primary spending driver at Ksh ${"%.2f".format(topCatSpend)} (${"%.0f".format((topCatSpend / totalSpend) * 100)}% of total monthly spend)."
+                    "$topCategory was your main spending category at Ksh ${"%.2f".format(topCatSpend)} (${"%.0f".format((topCatSpend / totalSpend) * 100)}% of your monthly spend)."
                 )
             }
         } else {
             explanations.add(
-                "$topCategory was your primary spending driver at Ksh ${"%.2f".format(topCatSpend)} (${"%.0f".format((topCatSpend / totalSpend) * 100)}% of total monthly spend)."
+                "$topCategory was your main spending category at Ksh ${"%.2f".format(topCatSpend)} (${"%.0f".format((topCatSpend / totalSpend) * 100)}% of your monthly spend)."
             )
         }
 
-        // 2. Merchant Frequency Anomaly Detection
+        // 2. Frequent Merchant Plain Statement
         val merchantCounts = expenseTx.groupBy { it.merchantOrParty }.mapValues { it.value.size }
         val topMerchantEntry = merchantCounts.maxByOrNull { it.value }
         if (topMerchantEntry != null && topMerchantEntry.value >= 2) {
             val mName = topMerchantEntry.key
             val mCount = topMerchantEntry.value
-            val priorMCountAvg = if (priorMonthsAvailable > 0) {
-                prior3MonthsTx.count { it.merchantOrParty.equals(mName, ignoreCase = true) } / priorMonthsAvailable.toDouble()
-            } else 0.0
-
-            if (priorMCountAvg > 0) {
-                val ratio = mCount / priorMCountAvg
-                if (ratio >= 1.5) {
-                    explanations.add(
-                        "Merchant Anomaly: $mName visit frequency increased ${"%.1f".format(ratio)}x ($mCount payments vs. prior avg of ${"%.1f".format(priorMCountAvg)})."
-                    )
-                } else {
-                    explanations.add("Top Merchant: $mName recorded $mCount payments totaling Ksh ${"%.2f".format(expenseTx.filter { it.merchantOrParty == mName }.sumOf { it.amount })}.")
-                }
-            } else {
-                explanations.add("Top Merchant: $mName recorded $mCount payments totaling Ksh ${"%.2f".format(expenseTx.filter { it.merchantOrParty == mName }.sumOf { it.amount })}.")
-            }
+            val mTotal = expenseTx.filter { it.merchantOrParty == mName }.sumOf { it.amount }
+            explanations.add("Top Merchant: You paid $mName $mCount times this month, totaling Ksh ${"%.2f".format(mTotal)}.")
         }
 
-        // 3. Budget Variance
+        // 3. Simple Budget Statement
         val isOver = totalSpend > monthlyBudget
         val diff = kotlin.math.abs(totalSpend - monthlyBudget)
         val budgetText = if (isOver) {
-            "Budget Variance: Total spend of Ksh ${"%.2f".format(totalSpend)} exceeded your Ksh ${"%.0f".format(monthlyBudget)} limit by Ksh ${"%.2f".format(diff)}."
+            "Monthly Budget: You spent Ksh ${"%.2f".format(totalSpend)}, which was Ksh ${"%.2f".format(diff)} over your Ksh ${"%.0f".format(monthlyBudget)} limit."
         } else {
-            "Budget Variance: Total spend of Ksh ${"%.2f".format(totalSpend)} stayed under your Ksh ${"%.0f".format(monthlyBudget)} limit with Ksh ${"%.2f".format(diff)} remaining."
+            "Monthly Budget: You spent Ksh ${"%.2f".format(totalSpend)}, staying under your Ksh ${"%.0f".format(monthlyBudget)} limit with Ksh ${"%.2f".format(diff)} left over."
         }
         explanations.add(budgetText)
 
-        // 4. Largest Transaction
+        // 4. Largest Transaction Plain Statement
         val maxTx = expenseTx.maxByOrNull { it.amount }
         if (maxTx != null) {
             val dateStr = SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(maxTx.timestamp))
-            explanations.add("Largest Payment: Ksh ${"%.2f".format(maxTx.amount)} paid to ${maxTx.merchantOrParty} on $dateStr.")
+            explanations.add("Single Largest Payment: Ksh ${"%.2f".format(maxTx.amount)} paid to ${maxTx.merchantOrParty} on $dateStr.")
         }
 
         val jsonExplanations = explanations.joinToString(prefix = "[\"", postfix = "\"]", separator = "\", \"") {
@@ -168,5 +155,24 @@ object StatisticalRecapEngine {
             shapExplanationsJson = jsonExplanations,
             timestamp = System.currentTimeMillis()
         )
+    }
+
+    suspend fun backfillHistoricalRecaps(
+        transactionDao: TransactionDao,
+        recapDao: RecapDao,
+        monthlyBudget: Double
+    ) {
+        val allTx = transactionDao.getAllTransactionsSync()
+        if (allTx.isEmpty()) return
+
+        val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        val distinctMonths = allTx.map { sdf.format(Date(it.timestamp)) }.distinct()
+
+        distinctMonths.forEach { mYear ->
+            val recap = generateRecap(mYear, transactionDao, monthlyBudget)
+            if (recap.totalSpend > 0) {
+                recapDao.insertRecap(recap)
+            }
+        }
     }
 }

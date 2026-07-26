@@ -51,6 +51,12 @@ fun RecapHistoryScreen(
     fun loadRecaps() {
         coroutineScope.launch {
             val dao = database.recapDao()
+            val budget = securityManager.getMonthlyBudget()
+            StatisticalRecapEngine.backfillHistoricalRecaps(
+                transactionDao = database.transactionDao(),
+                recapDao = dao,
+                monthlyBudget = budget
+            )
             recaps = dao.getAllRecaps()
             isLoading = false
         }
