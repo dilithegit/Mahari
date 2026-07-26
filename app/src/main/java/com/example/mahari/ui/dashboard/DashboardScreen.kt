@@ -21,6 +21,7 @@ import com.example.mahari.data.db.TransactionEntity
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.*
 import com.example.mahari.ui.budget.BudgetSettingsDialog
+import com.example.mahari.ui.dashboard.components.CurrentBalanceCard
 import com.example.mahari.ui.dashboard.components.HeroDailyBudgetCard
 import com.example.mahari.ui.dashboard.components.MonthlyCashflowCard
 import com.example.mahari.ui.dashboard.components.RecategorizeDialog
@@ -220,7 +221,15 @@ fun DashboardScreen(
                     )
                 }
 
-                // 2. Monthly Cashflow Summary Card
+                // 2. Current M-Pesa Balance Card
+                item {
+                    CurrentBalanceCard(
+                        currentBalance = uiState.currentBalance,
+                        latestTransactionTimestamp = uiState.latestTransactionTimestamp
+                    )
+                }
+
+                // 3. Monthly Cashflow Summary Card
                 item {
                     MonthlyCashflowCard(
                         monthIncome = uiState.monthIncome,

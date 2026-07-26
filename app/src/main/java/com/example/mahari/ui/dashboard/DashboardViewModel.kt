@@ -31,7 +31,9 @@ data class DashboardUiState(
     val searchQuery: String = "",
     val isSearchAllTime: Boolean = false,
     val selectedCategoryFilter: String? = null,
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+    val currentBalance: Double? = null,
+    val latestTransactionTimestamp: Long? = null
 )
 
 class DashboardViewModel(
@@ -117,6 +119,10 @@ class DashboardViewModel(
             matchesQuery && matchesCategory
         }
 
+        val latestTx = allTx.maxByOrNull { it.timestamp }
+        val latestBal = latestTx?.runningBalance
+        val latestTxTs = latestTx?.timestamp
+
         DashboardUiState(
             dateScopeMode = scopeMode,
             todaySpend = todaySpent,
@@ -128,7 +134,9 @@ class DashboardViewModel(
             searchQuery = query,
             isSearchAllTime = searchAllTime,
             selectedCategoryFilter = categoryFilter,
-            isRefreshing = refreshing
+            isRefreshing = refreshing,
+            currentBalance = latestBal,
+            latestTransactionTimestamp = latestTxTs
         )
     }.stateIn(
         scope = viewModelScope,
