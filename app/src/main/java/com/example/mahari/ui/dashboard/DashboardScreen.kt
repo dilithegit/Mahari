@@ -154,12 +154,6 @@ fun DashboardScreen(
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconButton(onClick = { showShareDialog = true }) {
-                                Text("📤", fontSize = 20.sp)
-                            }
-                            IconButton(onClick = { showSettingsDialog = true }) {
-                                Text("⚙️", fontSize = 20.sp)
-                            }
                             FilterChip(
                                 selected = isDarkMode,
                                 onClick = { onToggleTheme(!isDarkMode) },
