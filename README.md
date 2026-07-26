@@ -20,71 +20,59 @@
 - **Live Broadcast Receiver & Historical Backfill**: Intercepts incoming notifications and scans past device inbox via SMS ContentProvider.
 - **7 M-Pesa Format Patterns**: Parses Paybill / Buy Goods, Person-to-Person Transfers, Agent Withdrawals/Deposits, Airtime/Data purchases, and Fuliza Overdraft allocations.
 - **Real SMS Date Extraction**: Extracts exact transaction timestamps from message text (e.g., `"on 26/7/26 at 2:34 PM"`) with `Telephony.Sms.DATE` metadata fallback — **never import time**.
-- **Retroactive One-Time Migration**: Automatically re-parses and updates historical transactions' timestamps on startup.
+- **Full-Rescan Pull-to-Refresh**: Pulling down on the dashboard triggers the full SMS backfill re-scan code path directly (`SmsBackfillManager.performOneTimeBackfill`).
+- **Retroactive One-Time Migration**: Automatically re-parses and updates historical transactions' timestamps and running balances on startup.
 - **De-duplication**: Code hash verification prevents duplicate entry creation.
 
-### 🗓️ 2. Global Date-Scope Engine
+### 💰 2. Current M-Pesa Balance Card & Nullability Model
+- **Standalone Dashboard Card**: Displays current M-Pesa balance extracted from the most recent transaction with a valid balance reading.
+- **Nullable Balance Model**: `runningBalance` is a nullable `Double?` column, distinguishing genuine zero balances (`Ksh 0.00`) from unknown/absent balance readings (`null`).
+- **Broadened Regex Support**: Tollerates `Ksh`, `KES`, `Ksh.`, `KES.`, irregular spacing, negative overdraft balances (`Ksh-350.00`), and genuine zero values.
+- **Fuliza & Parse-Failure Skipping**: Transactions with absent or unparseable balances (such as standalone Fuliza overdraft alerts) are transparently skipped in balance selection queries.
+
+### 🗓️ 3. Global Date-Scope Engine
 - **Current Month Default**: Defaults to current calendar month (e.g. July 2026) on fresh launch. Past/custom selections do not persist across app sessions.
 - **Month Stepper (`< July 2026 >`)**: Fast month navigation arrows capped at the current real-world month.
 - **Custom Range Picker**: 📆 Calendar picker for custom start & end date ranges with a one-tap **"Back to Current Month"** snap-back button.
 - **Search All-Time Override**: 🌐 Search bar respects current date-scope by default, with an explicit **"Search All Time"** toggle chip.
 - **Recent Transactions Top 5 Preview**: Dashboard displays a compact card showing only the 5 most recent transactions (slim rows with merchant, category icon, amount, and time), with a **"See all {N} transactions"** button that opens `FullTransactionListSheet` modal sheet. Automatically hides the button when <= 5 items exist.
 
-### 🏛️ 3. Quiet Luxury Visual Design System
+### 🏛️ 4. Quiet Luxury Visual Design System
 - **OLED Warm Charcoal Background**: `#16181A` (`WarmCharcoalBgDark`) for warm, rich OLED dark mode.
 - **Warm Metal Accents**: Antique Brass (`#B08D57` Dark / `#8C6D3F` Light) for card borders, thin dividers, and structural accents.
 - **Precious Hero Emerald Restraint**: `#34D399` Dark / `#059669` Light reserved **strictly** for the single hero budget figure per screen.
 - **Eased Motion**: Cubic bezier transitions (`FastOutSlowInEasing`) for progress fills and count-up figures.
 - **Premium Biometric Lock Screen**: Custom pre-auth screen with centered Mahari cowrie mark inside a Warm Metal ring.
 
-### 📷 4. In-App Image Capture & Share Sheet
+### 📷 5. In-App Image Capture & Share Sheet
 - Renders custom Mahari share cards with theme-matching background, Warm Metal borders, and cowrie branding mark (`🐚 MAHARI`).
 - **Balance Masking**: Includes a toggle to mask sensitive balances (`Ksh ••••••`) before sharing.
 - **FLAG_SECURE Compliance**: `FLAG_SECURE` remains **100% active** to block OS-level screenshots while supporting in-app image export via Android Share Sheet (`FileProvider`).
 
-### ☁️ 5. Optional Opt-In Cloud Sync & Python FastAPI ML Backend
+### ☁️ 6. Optional Opt-In Cloud Sync & Python FastAPI ML Backend
 - **100% Offline-First Default**: Cloud sync is off by default and requires explicit user consent via confirmation modal.
 - **Data Minimization Guarantee**: Raw SMS text, phone numbers, and contact names **never leave the device**. Only structured DTOs (`amount`, `category`, `merchant`, `timestamp`, `isExpense`) are uploaded over HTTPS/TLS.
 - **Python FastAPI Backend** (`mahari_backend/`): Runs XGBoost + SHAP feature attribution engine. Encrypts data at rest using `cryptography.fernet.Fernet`.
 - **Permanent Data Deletion**: Includes `DELETE /api/v1/user-data/{deviceId}` endpoint to permanently purge all synced cloud data.
 
-### 🧠 6. Dynamic Categorization & Persistent Memory
+### 🧠 7. Dynamic Categorization & Persistent Memory
 - **Dynamic Keyword Matrix**: Auto-categorizes merchants, dining, supermarkets, fuel, and transport.
 - **Learning Memory**: Remembers user recategorizations in a local Room database (`merchant_category_mappings`) and applies them to future transactions from that merchant.
 
-### 📐 7. Systemic Layout & Text Wrapping Engine
-- **Truncation & Ellipsis**: Applied `maxLines = 1` and `TextOverflow.Ellipsis` across transaction lists, search items, and cards, preventing long paybill/till merchant names from clipping or breaking layouts.
-- **Notification Formatting**: Front-loads essential transaction details (`Ksh {amount} [{category}] at {merchant}`) and gracefully truncates long merchant text before Android system boundaries.
+---
 
-### 🛡️ 8. Selective `FLAG_SECURE` Scoping
-- **OS Screenshots Enabled**: Removed global `FLAG_SECURE` from `MainActivity`, allowing standard OS hardware-button screenshots across Dashboard and Transaction Detail screens.
-- **Lock Screen Protection**: `FLAG_SECURE` is retained **exclusively** on `BiometricAuthScreen` to prevent PIN/Biometric theft in screen captures or task switchers.
+## 🛡️ Data Integrity Safeguards & Known Issue History
 
-### ⚡ 9. Background Battery Optimization Exemption
-- **Onboarding Rationale & Exemption Step**: Step 4 in onboarding sequence explains background listener needs and prompts for `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` exemption (non-blocking).
-- **Background Reliability Re-Entrant Check**: Includes a **"⚡ Check Background Reliability"** action button in Settings for manual verification anytime.
+To prevent transaction visibility regressions (e.g. transactions disappearing after schema changes or date parsing adjustments), Mahari enforces strict automated and runtime guardrails:
 
-### 🏪 10. Merchant Detail / Spending Profile Screen
-- **Navigation**: Tapping any merchant name anywhere (ledger rows, details, search results) opens `MerchantDetailScreen`.
-- **Header & Category Editing**: Shows merchant name and current category with an inline **"Edit Category"** action that updates `merchant_category_mappings` table and recategorizes all past/future transactions.
-- **Stats & 6-Month Spend Trend**: Displays This Month Spend, All-Time Spend, Payment Count, Average Amount, and a 6-month historical mini bar chart.
-
-### 🏷️ 11. Category Detail Screen
-- **Navigation**: Tapping a category from the dashboard spending breakdown opens `CategoryDetailScreen`.
-- **Header & Budget Progress**: Shows category name, period spend (respecting active `dateScopeMode`), and category-specific budget progress bar (with a quiet "Set Target Budget" prompt if un-set).
-- **Top Merchants Breakdown**: Renders top 3–5 merchants by spend within the category, each tappable into its own `MerchantDetailScreen`.
-
-### 📊 12. Insights / Recap History Screen (Room Persistent)
-- **Navigation**: Accessible from monthly recap view and Settings.
-- **Permanent Room DB Persistence**: Generates and stores monthly recaps in `recap_history` Room DB table (`RecapEntity` / `RecapDao`), preserving past recaps permanently even if model logic updates.
-- **SHAP Plain-Language Inspection**: Tapping past monthly cards opens full recap modal view displaying SHAP feature attribution items.
-
-### ⚙️ 13. Data & Privacy Settings Screen
-- **Navigation**: Consolidated under Settings → Data & Privacy (`DataPrivacyScreen`).
-- **Backup & Restore**: Encrypted local `.json` export and restore options.
-- **Sync Mode & Privacy Text**: Cloud sync toggle with plain-language data minimization rules.
-- **SMS Backfill Re-Scan**: Trigger historical inbox scanning anytime.
-- **Destructive Data Wipe**: Red destructive zone requiring typing `"DELETE"` to wipe local Room DB and send purge payload to backend server if sync mode was used.
+1. **Automated Regression Suite (`TransactionVisibilityRegressionTest.kt`)**:
+   - Seeds transactions across distinct months, balances (`positive`, `0.0`, and `null`), and format variations.
+   - Runs database migrations (`MIGRATION_4_5`) and asserts that total record count and query visibility are preserved 100%.
+2. **Runtime Sanity Check (`DATA_INTEGRITY_SANITY_CHECK`)**:
+   - On every dashboard calculation pass, the ViewModel compares total raw SQLite database transactions against currently visible scoped transactions.
+   - Emits a high-priority warning log (`⚠️ SANITY WARNING: Database contains N transactions, but current scope returned 0`) if date filters conceal all records.
+3. **Mandatory Developer Checklist**:
+   - Any commit modifying `TransactionEntity`, Room schema versions, or `DateScopeMode` must execute `TransactionVisibilityRegressionTest` and verify raw DB count equality before release.
 
 ---
 
@@ -98,115 +86,32 @@ Mahari's visual identity balances financial clarity with luxury restraint:
 | **Card Surface** | `#1F2226` | `#FFFFFF` | Primary card containers |
 | **Warm Metal Accent** | `#B08D57` (Antique Brass) | `#8C6D3F` (Soft Copper) | Card borders, dividers, structural lines |
 | **Hero Emerald** | `#34D399` | `#059669` | **Reserved strictly** for hero numbers |
-| **Alert Red** | `#EF4444` | `#EF4444` | Overspending & Fuliza debt warnings |
 
 ---
 
-## 🛠️ Architecture & Tech Stack
-
-```
-+-----------------------------------------------------------------------+
-|                              MAHARI APP                               |
-+-----------------------------------------------------------------------+
-|  UI Layer (Jetpack Compose + Quiet Luxury Palette)                    |
-|   ├── Screens: DashboardScreen, OnboardingScreen, BiometricAuthScreen |
-|   ├── Components: DateScopeSelectorBar, DateRangePickerDialog         |
-|   └── ViewModels: DashboardViewModel (Unified Flow Combine)           |
-+-----------------------------------------------------------------------+
-|  Domain & Intelligence Layer                                          |
-|   ├── MpesaParser (Regex timestamp & 7 message format parsing)        |
-|   ├── Categorizer (Dynamic keyword matrix + Room learning memory)     |
-|   ├── DateScopeMode (Month Stepper, Custom Range, Search All-Time)    |
-|   ├── TransactionMigrationManager (Retroactive date migration)        |
-|   └── ImageCaptureUtils (Share card generator & FileProvider)         |
-+-----------------------------------------------------------------------+
-|  Data & Security Layer                                                |
-|   ├── Room Database (Transactions, Mappings, Budgets, Goals)          |
-|   ├── SecurityManager (EncryptedSharedPreferences, Biometrics, PIN)  |
-|   └── CloudSyncManager (HTTPS client, Data minimization DTOs)        |
-+-----------------------------------------------------------------------+
-                                   │ (Optional Opt-In Sync)
-                                   ▼
-+-----------------------------------------------------------------------+
-|                    PYTHON FASTAPI ML BACKEND                          |
-|  ├── Endpoints: POST /api/v1/sync, DELETE /api/v1/user-data/{id}      |
-|  ├── Security: Fernet symmetric encryption at rest                   |
-|  └── Engine: XGBoost + SHAP feature importance analysis               |
-+-----------------------------------------------------------------------+
-```
-
----
-
-## 📂 Project Structure
-
-```
-Mahari/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/example/mahari/
-│   │   │   │   ├── data/
-│   │   │   │   │   ├── db/           # Room Database, Entities, DAOs
-│   │   │   │   │   ├── migration/    # Retroactive Date Migration Manager
-│   │   │   │   │   ├── model/        # DateScopeMode Data Models
-│   │   │   │   │   ├── parser/       # M-Pesa Parser & SMS Backfill Manager
-│   │   │   │   │   ├── security/     # Encrypted Prefs & Security Manager
-│   │   │   │   │   └── sync/         # Cloud Sync Manager & Minimization DTOs
-│   │   │   │   ├── theme/            # Warm Charcoal, Warm Metal & Type Tokens
-│   │   │   │   ├── ui/               # Dashboard, Share, Onboarding & Security UI
-│   │   │   │   ├── util/             # Image Capture & FileProvider Utils
-│   │   │   │   ├── MainActivity.kt
-│   │   │   │   └── MahariApplication.kt
-│   │   └── test/                     # Unit test suites (MpesaParserTest)
-├── mahari_backend/                   # Optional Python FastAPI Server
-│   ├── main.py                       # FastAPI Endpoints (Sync & Purge)
-│   ├── ml_engine.py                  # XGBoost + SHAP Analysis Engine
-│   ├── security.py                   # Fernet At-Rest Encryption & Deletion
-│   └── requirements.txt              # FastAPI, XGBoost, SHAP, Fernet
-├── build.gradle.kts
-├── settings.gradle.kts
-├── LICENSE                           # MIT License
-└── README.md
-```
-
----
-
-## 🚀 Getting Started
+## 🛠️ Local Development & Build Setup
 
 ### Prerequisites
-- Android Studio Ladybug (or higher) or JDK 17+
-- Android SDK Platform 35/36
-- Physical Android phone or emulator running Android 7.0 (API 24) or higher
+- JDK 21 (bundled JetBrains Runtime `jbr` or OpenJDK 21)
+- Android SDK 35 & Android CLI (`adb`)
+- Gradle 8.11.1
 
-### Building & Running
-
-1. **Clone the repository**:
+### Build & Run
+1. **Clone Repository**:
    ```bash
    git clone https://github.com/dilithegit/Mahari.git
    cd Mahari
    ```
 
-2. **Build the APK using Gradle**:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-   Output APK: `app/build/outputs/apk/debug/app-debug.apk`
-
-3. **Run Unit Tests**:
+2. **Run Unit Tests**:
    ```bash
    ./gradlew testDebugUnitTest
    ```
 
-4. **Install directly via ADB**:
+3. **Build & Install Debug APK**:
    ```bash
+   ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-5. **(Optional) Run Python FastAPI Backend**:
-   ```bash
-   cd mahari_backend
-   pip install -r requirements.txt
-   python main.py
    ```
 
 ---
