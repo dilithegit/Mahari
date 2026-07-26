@@ -1,12 +1,18 @@
 package com.example.mahari.ui.navigation
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,11 +62,30 @@ fun BottomNavBar(
 
                 val activeColor = WarmMetalDark
 
+                val iconScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.08f else 1.0f,
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    label = "tab_scale"
+                )
+
+                val pillColor by animateColorAsState(
+                    targetValue = if (isSelected) activeColor.copy(alpha = 0.15f) else androidx.compose.ui.graphics.Color.Transparent,
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    label = "pill_color"
+                )
+
+                val contentColor by animateColorAsState(
+                    targetValue = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    label = "content_color"
+                )
+
                 Surface(
                     onClick = { onTabSelected(tab.screen) },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) activeColor.copy(alpha = 0.15f) else androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = pillColor,
+                    contentColor = contentColor,
+                    modifier = Modifier.scale(iconScale)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -71,14 +96,14 @@ fun BottomNavBar(
                             text = tab.symbol,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = contentColor
                         )
                         if (isSelected) {
                             Text(
                                 text = tab.label,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = activeColor
+                                color = contentColor
                             )
                         }
                     }
