@@ -27,6 +27,9 @@ jobs:
       - name: Build Debug & Release APKs
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: List APK Output Files
+        run: ls -la app/build/outputs/apk/release/
+
       - name: Generate SHA-256 Checksum
         run: |
           cd app/build/outputs/apk/release/
