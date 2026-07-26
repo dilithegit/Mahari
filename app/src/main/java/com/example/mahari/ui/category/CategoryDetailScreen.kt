@@ -14,11 +14,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.TransactionEntity
+import com.example.mahari.ui.dashboard.components.TransactionItemRow
 import com.example.mahari.theme.HeroEmeraldDark
 import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
-import com.example.mahari.ui.dashboard.TransactionItemRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

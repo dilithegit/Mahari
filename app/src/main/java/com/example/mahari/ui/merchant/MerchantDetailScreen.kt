@@ -19,8 +19,8 @@ import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.PrimaryNavy
 import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
-import com.example.mahari.ui.dashboard.RecategorizeDialog
-import com.example.mahari.ui.dashboard.TransactionItemRow
+import com.example.mahari.ui.dashboard.components.RecategorizeDialog
+import com.example.mahari.ui.dashboard.components.TransactionItemRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date

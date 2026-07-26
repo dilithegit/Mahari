@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.TransactionEntity
+import com.example.mahari.ui.dashboard.components.TransactionItemRow
 import com.example.mahari.theme.WarmMetalDark
 
 @OptIn(ExperimentalMaterial3Api::class)
