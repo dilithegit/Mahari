@@ -86,7 +86,9 @@ fun RecapHistoryScreen(
         val r = selectedRecap!!
         ModalBottomSheet(
             onDismissRequest = { selectedRecap = null },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
                 modifier = Modifier
@@ -103,11 +105,11 @@ fun RecapHistoryScreen(
                         text = "Monthly Recap • ${r.monthYear}",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = PrimaryContainer
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
                             text = "Local Statistical Engine",
@@ -144,13 +146,13 @@ fun RecapHistoryScreen(
                     if (cleanText.isNotBlank()) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = WarmCharcoalElevatedDark),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
                                 text = "• $cleanText",
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(12.dp)
                             )
                         }

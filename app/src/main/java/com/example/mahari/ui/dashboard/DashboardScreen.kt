@@ -611,6 +611,19 @@ fun TransactionItemRow(
                             maxLines = 1
                         )
                     }
+                    val paybillDetails = remember(transaction.rawText) {
+                        com.example.mahari.data.parser.MpesaParser.extractPaybillTillDetails(transaction.rawText)
+                    }
+                    if (paybillDetails != null) {
+                        Text(
+                            text = paybillDetails,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = WarmMetalDark,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 

@@ -10,11 +10,11 @@ import kotlinx.coroutines.withContext
 object TransactionMigrationManager {
 
     private const val PREFS_NAME = "mahari_migration_prefs"
-    private const val KEY_MIGRATION_V1 = "date_migration_v1_complete"
+    private const val KEY_MIGRATION_V2 = "date_migration_v2_recorrect"
 
     suspend fun runOneTimeDateMigration(context: Context, transactionDao: TransactionDao): Int = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(KEY_MIGRATION_V1, false)) {
+        if (prefs.getBoolean(KEY_MIGRATION_V2, false)) {
             return@withContext 0
         }
 
@@ -33,8 +33,8 @@ object TransactionMigrationManager {
                 }
             }
 
-            prefs.edit().putBoolean(KEY_MIGRATION_V1, true).apply()
-            Log.d("MahariMigration", "One-time date migration complete. Corrected $correctedCount out of ${allTransactions.size} transactions.")
+            prefs.edit().putBoolean(KEY_MIGRATION_V2, true).apply()
+            Log.d("MahariMigration", "One-time date migration V2 complete. Corrected $correctedCount out of ${allTransactions.size} transactions.")
             return@withContext correctedCount
         } catch (e: Exception) {
             e.printStackTrace()

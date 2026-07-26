@@ -1,20 +1,23 @@
 package com.example.mahari.ui.navigation
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.AppScreen
-import com.example.mahari.theme.WarmCharcoalBgDark
-import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
+
+data class NavTabItem(
+    val screen: AppScreen,
+    val label: String,
+    val symbol: String
+)
 
 @Composable
 fun BottomNavBar(
@@ -23,26 +26,27 @@ fun BottomNavBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = WarmCharcoalBgDark,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.2f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 12.dp),
+                .navigationBarsPadding()
+                .padding(vertical = 10.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             val tabs = listOf(
-                Triple(AppScreen.Dashboard, "Dashboard", "🏠"),
-                Triple(AppScreen.TransactionsLedger, "Ledger", "📜"),
-                Triple(AppScreen.RecapHistory, "Insights", "📊"),
-                Triple(AppScreen.Settings, "Settings", "⚙️")
+                NavTabItem(AppScreen.Dashboard, "Dashboard", "⌂"),
+                NavTabItem(AppScreen.TransactionsLedger, "Ledger", "≡"),
+                NavTabItem(AppScreen.RecapHistory, "Insights", "∯"),
+                NavTabItem(AppScreen.Settings, "Settings", "⚙")
             )
 
-            tabs.forEach { (screen, label, icon) ->
-                val isSelected = when (screen) {
+            tabs.forEach { tab ->
+                val isSelected = when (tab.screen) {
                     AppScreen.Dashboard -> currentScreen is AppScreen.Dashboard
                     AppScreen.TransactionsLedger -> currentScreen is AppScreen.TransactionsLedger
                     AppScreen.RecapHistory -> currentScreen is AppScreen.RecapHistory
@@ -50,24 +54,31 @@ fun BottomNavBar(
                     else -> false
                 }
 
+                val activeColor = WarmMetalDark
+
                 Surface(
-                    onClick = { onTabSelected(screen) },
+                    onClick = { onTabSelected(tab.screen) },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) WarmMetalDark.copy(alpha = 0.2f) else androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = if (isSelected) WarmMetalDark else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelected) activeColor.copy(alpha = 0.15f) else androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(icon, fontSize = 16.sp)
+                        Text(
+                            text = tab.symbol,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         if (isSelected) {
                             Text(
-                                text = label,
+                                text = tab.label,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = WarmMetalDark
+                                color = activeColor
                             )
                         }
                     }

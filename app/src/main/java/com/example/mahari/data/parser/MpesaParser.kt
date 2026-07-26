@@ -9,6 +9,26 @@ object MpesaParser {
         return amountStr.replace(",", "").toDoubleOrNull() ?: 0.0
     }
 
+    fun extractPaybillTillDetails(smsBody: String): String? {
+        if (smsBody.isBlank()) return null
+        val clean = smsBody.trim()
+
+        val accPattern = Pattern.compile("""for\s+account\s+([A-Za-z0-9\-_]+)""", Pattern.CASE_INSENSITIVE)
+        val accMatcher = accPattern.matcher(clean)
+        val accountNo = if (accMatcher.find()) accMatcher.group(1)?.trim() else null
+
+        val numPattern = Pattern.compile("""(?:paid\s+to|sent\s+to|from)\s+(?:PAYBILL|TILL)?\s*(\d{4,8})""", Pattern.CASE_INSENSITIVE)
+        val numMatcher = numPattern.matcher(clean)
+        val numberStr = if (numMatcher.find()) numMatcher.group(1)?.trim() else null
+
+        return when {
+            numberStr != null && accountNo != null -> "Paybill: $numberStr • Acc: $accountNo"
+            accountNo != null -> "Acc Reference: $accountNo"
+            numberStr != null -> "Till / Paybill: $numberStr"
+            else -> null
+        }
+    }
+
     fun extractTransactionTimestamp(smsBody: String, fallbackDate: Long): Long {
         try {
             val datePattern = Pattern.compile(
@@ -22,10 +42,27 @@ object MpesaParser {
 
                 val dateParts = dateStr.split("/")
                 if (dateParts.size == 3) {
-                    val day = dateParts[0].toInt()
-                    val month = dateParts[1].toInt() - 1
+                    val p0 = dateParts[0].toInt()
+                    val p1 = dateParts[1].toInt()
                     var year = dateParts[2].toInt()
                     if (year < 100) year += 2000
+
+                    var day: Int
+                    var month: Int
+
+                    if (p0 > 12) {
+                        day = p0
+                        month = p1 - 1
+                    } else if (p1 > 12) {
+                        month = p0 - 1
+                        day = p1
+                    } else {
+                        day = p0
+                        month = p1 - 1
+                    }
+
+                    month = month.coerceIn(0, 11)
+                    day = day.coerceIn(1, 31)
 
                     var hour = 0
                     var minute = 0
@@ -62,10 +99,6 @@ object MpesaParser {
         val cleanSms = smsBody.trim()
 
         // 1. Paybill & Buy Goods (Till):
-        // Examples:
-        // "QK1234567 Confirmed. Ksh1,500.00 paid to KPLC PREPAID for account 84930291039 on 26/7/26 at 2:34 PM. New M-PESA balance is Ksh4,200.00."
-        // "QK8901234 Confirmed. Ksh450.00 paid to JAVA HOUSE KILIMANI on 26/7/26 at 1:15 PM. New M-PESA balance is Ksh1,200.45."
-        // "QK1234567 Confirmed. Ksh2,000.00 sent to EQUITY BANK for account 1234567890 on 26/7/26 at 3:15 PM."
         val paybillPattern = Pattern.compile(
             """^([A-Z0-9]+)\s+Confirmed\.\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+(?:paid|sent)\s+to\s+(.+?)(?:\s+for\s+account\s+(.+?))?(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
@@ -75,11 +108,9 @@ object MpesaParser {
             val code = paybillMatcher.group(1) ?: ""
             val amount = parseAmount(paybillMatcher.group(2) ?: "0")
             var merchant = paybillMatcher.group(3)?.trim() ?: "Merchant"
-            val account = paybillMatcher.group(4)?.trim()
             val balanceStr = paybillMatcher.group(5)
             val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
 
-            // Strip trailing "on DD/MM/YY" if captured in merchant name
             if (merchant.contains(" on ", ignoreCase = true)) {
                 merchant = merchant.substringBefore(" on ", merchant).trim()
             }
@@ -96,7 +127,6 @@ object MpesaParser {
         }
 
         // 2. Send Money to Person:
-        // "QK3456789 Confirmed. Ksh1,000.00 sent to JOHN DOE 0712345678 on 26/7/26 at 11:00 AM. New M-PESA balance is Ksh5,000.00."
         val sendPattern = Pattern.compile(
             """^([A-Z0-9]+)\s+Confirmed\.\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+sent\s+to\s+(.+?)(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
@@ -125,7 +155,6 @@ object MpesaParser {
         }
 
         // 3. Receive Money:
-        // "QK9876543 Confirmed. You have received Ksh3,000.00 from JANE SMITH 0722000111 on 26/7/26 at 9:00 AM. New M-PESA balance is Ksh8,000.00."
         val receivePattern = Pattern.compile(
             """^([A-Z0-9]+)\s+Confirmed\.\s+You\s+have\s+received\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+from\s+(.+?)(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
