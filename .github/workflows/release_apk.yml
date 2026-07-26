@@ -1,0 +1,58 @@
+name: Release APK Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    name: Build & Publish Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Build Debug & Release APKs
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Generate SHA-256 Checksum
+        run: |
+          cd app/build/outputs/apk/release/
+          sha256sum app-release.apk > app-release.apk.sha256
+          echo "SHA-256 Checksum generated:"
+          cat app-release.apk.sha256
+
+      - name: Create GitHub Release & Upload APK
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release.apk.sha256
+          title: "Mahari v3.0.0 Release (${{ github.ref_name }})"
+          body: |
+            ## 📱 Mahari Direct-Install Release Package
+
+            > [!NOTE]
+            > This is a direct-install APK package. If prompted by Android, enable **"Install unknown apps"** for your browser or file manager.
+
+            ### 🔒 Integrity Verification
+            Verify the downloaded APK checksum matches:
+            ```
+            $(cat app/build/outputs/apk/release/app-release.apk.sha256)
+            ```
+
+            ### 🚀 What's New in v3.0.0
+            - **Financial Health Score & Confidence Engine**: 4-factor scoring (Budget, Savings Rate, Spending Consistency, Debt Reliance) with data-sufficiency confidence scale.
+            - **Optimized Pull-To-Refresh**: Incremental SMS scanning & indexed Room database queries for instant UI responsiveness.
+            - **Jetpack Navigation Compose & Encrypted Storage**: Full back stack navigation with AES-256 GCM database encryption at rest.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
