@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.mahari.data.security.DatabaseFileCipher
+import com.example.mahari.data.security.SecurityManager
 
 @Database(
     entities = [
@@ -30,6 +32,9 @@ abstract class MahariDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): MahariDatabase {
             return INSTANCE ?: synchronized(this) {
+                val sec = SecurityManager(context)
+                DatabaseFileCipher.decryptDatabaseOnDisk(context, sec)
+
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MahariDatabase::class.java,
@@ -40,6 +45,18 @@ abstract class MahariDatabase : RoomDatabase() {
 
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        fun lockAndEncryptDatabase(context: Context) {
+            synchronized(this) {
+                val inst = INSTANCE
+                if (inst != null && inst.isOpen) {
+                    inst.close()
+                }
+                INSTANCE = null
+                val sec = SecurityManager(context)
+                DatabaseFileCipher.encryptDatabaseOnDisk(context, sec)
             }
         }
     }
