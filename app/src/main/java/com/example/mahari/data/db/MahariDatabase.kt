@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.mahari.data.parser.MpesaParser
 import com.example.mahari.data.security.DatabaseFileCipher
 import com.example.mahari.data.security.SecurityManager
 
@@ -18,7 +19,7 @@ import com.example.mahari.data.security.SecurityManager
         RecapEntity::class,
         CategoryEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class MahariDatabase : RoomDatabase() {
@@ -44,6 +45,39 @@ abstract class MahariDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Re-parse every existing transaction's rawText against broadened MpesaParser regex
+                val cursor = db.query("SELECT code, rawText FROM transactions")
+                val updates = mutableListOf<Pair<String, Double?>>()
+                cursor.use { c ->
+                    val codeIdx = c.getColumnIndex("code")
+                    val rawTextIdx = c.getColumnIndex("rawText")
+                    if (codeIdx != -1 && rawTextIdx != -1) {
+                        while (c.moveToNext()) {
+                            val code = c.getString(codeIdx)
+                            val rawText = c.getString(rawTextIdx) ?: ""
+                            val parsed = MpesaParser.parse(rawText)
+                            val newBalance = parsed?.runningBalance
+                            updates.add(Pair(code, newBalance))
+                        }
+                    }
+                }
+                var updatedRealCount = 0
+                var updatedNullCount = 0
+                for ((code, newBal) in updates) {
+                    if (newBal != null) {
+                        db.execSQL("UPDATE transactions SET runningBalance = ? WHERE code = ?", arrayOf(newBal, code))
+                        updatedRealCount++
+                    } else {
+                        db.execSQL("UPDATE transactions SET runningBalance = NULL WHERE code = ?", arrayOf(code))
+                        updatedNullCount++
+                    }
+                }
+                android.util.Log.d("MahariDatabase", "MIGRATION_4_5 complete: $updatedRealCount rows with balance, $updatedNullCount rows set to null.")
+            }
+        }
+
         fun getDatabase(context: Context): MahariDatabase {
             return INSTANCE ?: synchronized(this) {
                 val sec = SecurityManager(context)
@@ -54,7 +88,7 @@ abstract class MahariDatabase : RoomDatabase() {
                     MahariDatabase::class.java,
                     "mahari_database.db"
                 )
-                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build()
 

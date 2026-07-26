@@ -16,7 +16,7 @@ data class ParsedMpesaTransaction(
     val amount: Double,
     val merchantOrParty: String,
     val type: MpesaTransactionType,
-    val runningBalance: Double,
+    val runningBalance: Double?,
     val timestamp: Long = System.currentTimeMillis(),
     val rawText: String,
     val isExpense: Boolean,

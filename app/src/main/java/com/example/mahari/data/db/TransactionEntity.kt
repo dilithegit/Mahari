@@ -19,7 +19,7 @@ data class TransactionEntity(
     val merchantOrParty: String,
     val category: String,
     val type: String,
-    val runningBalance: Double,
+    val runningBalance: Double?,
     val timestamp: Long,
     val rawText: String,
     val isExpense: Boolean,

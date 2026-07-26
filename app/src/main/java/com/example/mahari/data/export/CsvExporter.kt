@@ -14,7 +14,8 @@ object CsvExporter {
         for (tx in transactions) {
             val dateStr = dateFormat.format(Date(tx.timestamp))
             val merchantSanitized = tx.merchantOrParty.replace(",", " ")
-            sb.append("${tx.code},$dateStr,$merchantSanitized,${tx.category},${tx.type},${tx.amount},${tx.runningBalance},${tx.isExpense}\n")
+            val balanceStr = tx.runningBalance?.let { "%.2f".format(it) } ?: ""
+            sb.append("${tx.code},$dateStr,$merchantSanitized,${tx.category},${tx.type},${tx.amount},$balanceStr,${tx.isExpense}\n")
         }
 
         return sb.toString()
