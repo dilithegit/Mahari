@@ -80,6 +80,18 @@ class DashboardViewModel(
 
         val scopedTx = allTx.filter { it.timestamp in startTs..endTs }
 
+        if (allTx.isNotEmpty() && scopedTx.isEmpty()) {
+            android.util.Log.w(
+                "DATA_INTEGRITY_SANITY_CHECK",
+                "⚠️ SANITY WARNING: Database contains ${allTx.size} transactions, but current scope (${scopeMode.label}) returned 0. Check date filters."
+            )
+        } else {
+            android.util.Log.d(
+                "DATA_INTEGRITY_SANITY_CHECK",
+                "✅ DB Total: ${allTx.size} | Currently Visible Scoped (${scopeMode.label}): ${scopedTx.size}"
+            )
+        }
+
         val nowCal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -119,9 +131,9 @@ class DashboardViewModel(
             matchesQuery && matchesCategory
         }
 
-        val latestTx = allTx.maxByOrNull { it.timestamp }
-        val latestBal = latestTx?.runningBalance
-        val latestTxTs = latestTx?.timestamp
+        val latestTxWithBalance = allTx.filter { it.runningBalance != null }.maxByOrNull { it.timestamp }
+        val latestBal = latestTxWithBalance?.runningBalance
+        val latestTxTs = latestTxWithBalance?.timestamp
 
         DashboardUiState(
             dateScopeMode = scopeMode,
@@ -147,25 +159,17 @@ class DashboardViewModel(
     fun refreshDashboard(context: Context, database: MahariDatabase) {
         viewModelScope.launch {
             _isRefreshing.value = true
-            // 1. Fast cosmetic re-query
-            delay(300)
-
-            // 2. Throttled real SMS re-scan (once every 3 minutes)
-            val now = System.currentTimeMillis()
-            if (now - lastFullScanTime > 3 * 60 * 1000L) {
-                try {
-                    SmsBackfillManager.performOneTimeBackfill(
-                        context = context,
-                        transactionDao = database.transactionDao(),
-                        mappingDao = database.merchantMappingDao()
-                    )
-                    lastFullScanTime = now
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            try {
+                SmsBackfillManager.performOneTimeBackfill(
+                    context = context,
+                    transactionDao = database.transactionDao(),
+                    mappingDao = database.merchantMappingDao()
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isRefreshing.value = false
             }
-
-            _isRefreshing.value = false
         }
     }
 
