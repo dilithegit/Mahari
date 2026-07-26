@@ -16,19 +16,18 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mahari.AppScreen
 import com.example.mahari.theme.WarmMetalDark
 
 data class NavTabItem(
-    val screen: AppScreen,
+    val route: String,
     val label: String,
     val symbol: String
 )
 
 @Composable
 fun BottomNavBar(
-    currentScreen: AppScreen,
-    onTabSelected: (AppScreen) -> Unit
+    currentRoute: String?,
+    onRouteSelected: (String) -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -45,20 +44,14 @@ fun BottomNavBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val tabs = listOf(
-                NavTabItem(AppScreen.Dashboard, "Dashboard", "⌂"),
-                NavTabItem(AppScreen.TransactionsLedger, "Ledger", "≡"),
-                NavTabItem(AppScreen.RecapHistory, "Insights", "∯"),
-                NavTabItem(AppScreen.Settings, "Settings", "⚙")
+                NavTabItem("dashboard", "Dashboard", "⌂"),
+                NavTabItem("ledger", "Ledger", "≡"),
+                NavTabItem("insights", "Insights", "∯"),
+                NavTabItem("settings", "Settings", "⚙")
             )
 
             tabs.forEach { tab ->
-                val isSelected = when (tab.screen) {
-                    AppScreen.Dashboard -> currentScreen is AppScreen.Dashboard
-                    AppScreen.TransactionsLedger -> currentScreen is AppScreen.TransactionsLedger
-                    AppScreen.RecapHistory -> currentScreen is AppScreen.RecapHistory
-                    AppScreen.Settings -> currentScreen is AppScreen.Settings
-                    else -> false
-                }
+                val isSelected = currentRoute == tab.route
 
                 val activeColor = WarmMetalDark
 
@@ -81,7 +74,7 @@ fun BottomNavBar(
                 )
 
                 Surface(
-                    onClick = { onTabSelected(tab.screen) },
+                    onClick = { onRouteSelected(tab.route) },
                     shape = RoundedCornerShape(16.dp),
                     color = pillColor,
                     contentColor = contentColor,
