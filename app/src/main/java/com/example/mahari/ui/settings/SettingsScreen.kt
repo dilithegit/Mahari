@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.CategoryEntity
@@ -22,7 +23,6 @@ import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.PrimaryNavy
-import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
 import com.example.mahari.util.BatteryOptimizationManager
 import kotlinx.coroutines.launch
@@ -48,10 +48,104 @@ fun SettingsScreen(
     var newCatName by remember { mutableStateOf("") }
     var newCatEmoji by remember { mutableStateOf("🛍️") }
 
+    var showPinDialog by remember { mutableStateOf(false) }
+    var currentPinInput by remember { mutableStateOf("") }
+    var newPinInput by remember { mutableStateOf("") }
+    var confirmPinInput by remember { mutableStateOf("") }
+
+    val hasExistingPin = securityManager.getPin() != null
+
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             customCategories = database.categoryDao().getAllCustomCategories()
         }
+    }
+
+    if (showPinDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showPinDialog = false
+                currentPinInput = ""
+                newPinInput = ""
+                confirmPinInput = ""
+            },
+            title = {
+                Text(if (hasExistingPin) "🔑 Change Security PIN" else "🔑 Set Baseline PIN", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (hasExistingPin) {
+                        OutlinedTextField(
+                            value = currentPinInput,
+                            onValueChange = { if (it.length <= 4) currentPinInput = it },
+                            label = { Text("Current 4-Digit PIN") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = newPinInput,
+                        onValueChange = { if (it.length <= 4) newPinInput = it },
+                        label = { Text("New 4-Digit PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPinInput,
+                        onValueChange = { if (it.length <= 4) confirmPinInput = it },
+                        label = { Text("Confirm New 4-Digit PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (hasExistingPin && currentPinInput != securityManager.getPin()) {
+                            Toast.makeText(context, "Current PIN is incorrect.", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (newPinInput.length != 4) {
+                            Toast.makeText(context, "PIN must be exactly 4 digits.", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (newPinInput != confirmPinInput) {
+                            Toast.makeText(context, "New PINs do not match.", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        securityManager.setPin(newPinInput)
+                        showPinDialog = false
+                        currentPinInput = ""
+                        newPinInput = ""
+                        confirmPinInput = ""
+                        Toast.makeText(context, "Security PIN updated successfully!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = WarmMetalDark)
+                ) {
+                    Text("Save PIN")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPinDialog = false
+                    currentPinInput = ""
+                    newPinInput = ""
+                    confirmPinInput = ""
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showAddCategoryDialog) {
@@ -282,7 +376,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 5: Security & Privacy
+            // Section 5: App Security, PIN & Biometric Management
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -297,12 +391,43 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Enable Biometric App Lock", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Column {
+                            Text("Fallback Security PIN", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = if (hasExistingPin) "Status: Active (Mandatory Fallback)" else "Status: Not Set (Required)",
+                                fontSize = 11.sp,
+                                color = if (hasExistingPin) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Button(
+                            onClick = { showPinDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = WarmMetalDark)
+                        ) {
+                            Text(if (hasExistingPin) "🔑 Change PIN" else "🔑 Set PIN", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Enable Biometric App Lock", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Uses biometric first, PIN as mandatory fallback", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Switch(
                             checked = isBiometricEnabled,
-                            onCheckedChange = {
-                                isBiometricEnabled = it
-                                securityManager.setBiometricEnabled(it)
+                            onCheckedChange = { enabled ->
+                                if (enabled && securityManager.getPin() == null) {
+                                    Toast.makeText(context, "Set a Security PIN first before enabling biometric lock.", Toast.LENGTH_SHORT).show()
+                                    showPinDialog = true
+                                } else {
+                                    isBiometricEnabled = enabled
+                                    securityManager.setBiometricEnabled(enabled)
+                                }
                             }
                         )
                     }
@@ -317,7 +442,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("🐚 MAHARI FINANCE", fontWeight = FontWeight.Bold, color = PrimaryNavy, fontSize = 16.sp)
-                    Text("Version 2.4.0 • Strathmore University", fontSize = 12.sp, color = PrimaryNavy)
+                    Text("Version 2.5.0 • Strathmore University", fontSize = 12.sp, color = PrimaryNavy)
                     Text("Developed by Okwudili Ujubuonu & Mark Gitau Irungu", fontSize = 11.sp, color = PrimaryNavy)
                 }
             }
