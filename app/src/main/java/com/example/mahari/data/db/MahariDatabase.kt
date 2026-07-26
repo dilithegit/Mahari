@@ -34,7 +34,10 @@ abstract class MahariDatabase : RoomDatabase() {
                     context.applicationContext,
                     MahariDatabase::class.java,
                     "mahari_database.db"
-                ).fallbackToDestructiveMigration().build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+
                 INSTANCE = instance
                 instance
             }

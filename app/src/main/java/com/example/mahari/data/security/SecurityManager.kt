@@ -83,4 +83,13 @@ class SecurityManager(context: Context) {
         }
         return id
     }
+
+    fun getOrCreateDatabasePassphrase(): String {
+        var passphrase = prefs.getString("db_passphrase_v1", null)
+        if (passphrase.isNullOrEmpty()) {
+            passphrase = UUID.randomUUID().toString() + UUID.randomUUID().toString()
+            prefs.edit().putString("db_passphrase_v1", passphrase).apply()
+        }
+        return passphrase
+    }
 }
