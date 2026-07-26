@@ -43,33 +43,36 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: List APK Output Files
-        run: ls -la app/build/outputs/apk/release/
+      - name: Rename Release APK to mahari.apk
+        run: |
+          cd app/build/outputs/apk/release/
+          mv app-release.apk mahari.apk
+          ls -la
 
       - name: Generate SHA-256 Checksum
         run: |
           cd app/build/outputs/apk/release/
-          sha256sum app-release.apk > app-release.apk.sha256
+          sha256sum mahari.apk > mahari.apk.sha256
           echo "SHA-256 Checksum generated:"
-          cat app-release.apk.sha256
+          cat mahari.apk.sha256
 
       - name: Create GitHub Release & Upload APK
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release.apk.sha256
+            app/build/outputs/apk/release/mahari.apk
+            app/build/outputs/apk/release/mahari.apk.sha256
           name: "Mahari v3.0.0 Release (${{ github.ref_name }})"
           body: |
             ## 📱 Mahari Direct-Install Release Package
 
             > [!NOTE]
-            > This is a direct-install APK package. If prompted by Android, enable **"Install unknown apps"** for your browser or file manager.
+            > This is a direct-install APK package (`mahari.apk`). If prompted by Android, enable **"Install unknown apps"** for your browser or file manager.
 
             ### 🔒 Integrity Verification
             Verify the downloaded APK checksum matches:
             ```
-            $(cat app/build/outputs/apk/release/app-release.apk.sha256)
+            $(cat app/build/outputs/apk/release/mahari.apk.sha256)
             ```
 
             ### 🚀 What's New in v3.0.0
