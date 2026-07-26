@@ -10,7 +10,45 @@ import com.example.mahari.data.budget.BudgetEvaluation
 
 object NotificationHelper {
     private const val CHANNEL_ID = "mahari_budget_alerts"
-    private const val CHANNEL_NAME = "Budget Threshold Alerts"
+    private const val CHANNEL_NAME = "Budget Threshold & Transaction Alerts"
+
+    fun showRealtimeTransactionNotification(
+        context: Context,
+        amount: Double,
+        party: String,
+        isExpense: Boolean
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Real-time notifications for incoming & outgoing M-Pesa payments"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val title = if (!isExpense) "💰 Money Received" else "💸 Payment Sent"
+        val text = if (!isExpense) {
+            "You received Ksh ${"%.2f".format(amount)} from $party"
+        } else {
+            "You sent Ksh ${"%.2f".format(amount)} to $party"
+        }
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
 
     fun showBudgetAlertNotification(context: Context, evaluation: BudgetEvaluation, latestMerchant: String, latestAmount: Double) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

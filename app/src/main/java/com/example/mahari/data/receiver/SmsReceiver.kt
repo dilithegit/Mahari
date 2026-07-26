@@ -53,6 +53,13 @@ class SmsReceiver : BroadcastReceiver() {
                         )
 
                         db.transactionDao().insertTransaction(entity)
+
+                        com.example.mahari.data.notification.NotificationHelper.showRealtimeTransactionNotification(
+                            context = context,
+                            amount = parsed.amount,
+                            party = parsed.merchantOrParty,
+                            isExpense = parsed.isExpense
+                        )
                     }
                 }
             }

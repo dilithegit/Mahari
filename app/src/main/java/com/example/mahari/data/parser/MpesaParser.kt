@@ -61,17 +61,28 @@ object MpesaParser {
     fun parse(smsBody: String): ParsedMpesaTransaction? {
         val cleanSms = smsBody.trim()
 
-        // 1. Paybill / Buy Goods: QFG8XYZ Confirmed. Ksh350.00 paid to Java House. New M-PESA balance is Ksh1,200.45
+        // 1. Paybill & Buy Goods (Till):
+        // Examples:
+        // "QK1234567 Confirmed. Ksh1,500.00 paid to KPLC PREPAID for account 84930291039 on 26/7/26 at 2:34 PM. New M-PESA balance is Ksh4,200.00."
+        // "QK8901234 Confirmed. Ksh450.00 paid to JAVA HOUSE KILIMANI on 26/7/26 at 1:15 PM. New M-PESA balance is Ksh1,200.45."
+        // "QK1234567 Confirmed. Ksh2,000.00 sent to EQUITY BANK for account 1234567890 on 26/7/26 at 3:15 PM."
         val paybillPattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+Ksh([\d,]+\.\d{2})\s+paid\s+to\s+(.+?)\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+(?:paid|sent)\s+to\s+(.+?)(?:\s+for\s+account\s+(.+?))?(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val paybillMatcher = paybillPattern.matcher(cleanSms)
         if (paybillMatcher.find()) {
             val code = paybillMatcher.group(1) ?: ""
             val amount = parseAmount(paybillMatcher.group(2) ?: "0")
-            val merchant = paybillMatcher.group(3)?.trim() ?: "Unknown Merchant"
-            val balance = parseAmount(paybillMatcher.group(4) ?: "0")
+            var merchant = paybillMatcher.group(3)?.trim() ?: "Merchant"
+            val account = paybillMatcher.group(4)?.trim()
+            val balanceStr = paybillMatcher.group(5)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
+
+            // Strip trailing "on DD/MM/YY" if captured in merchant name
+            if (merchant.contains(" on ", ignoreCase = true)) {
+                merchant = merchant.substringBefore(" on ", merchant).trim()
+            }
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -84,17 +95,23 @@ object MpesaParser {
             )
         }
 
-        // 2. Send Money: QFG8XYZ Confirmed. Ksh350.00 sent to John Doe 0712345678 on 25/7/26 at 12:45 PM. New M-PESA balance is Ksh1,200.45
+        // 2. Send Money to Person:
+        // "QK3456789 Confirmed. Ksh1,000.00 sent to JOHN DOE 0712345678 on 26/7/26 at 11:00 AM. New M-PESA balance is Ksh5,000.00."
         val sendPattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+Ksh([\d,]+\.\d{2})\s+sent\s+to\s+(.+?)(?:\s+on\s+.+?)?\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+sent\s+to\s+(.+?)(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val sendMatcher = sendPattern.matcher(cleanSms)
         if (sendMatcher.find()) {
             val code = sendMatcher.group(1) ?: ""
             val amount = parseAmount(sendMatcher.group(2) ?: "0")
-            val recipient = sendMatcher.group(3)?.trim() ?: "Recipient"
-            val balance = parseAmount(sendMatcher.group(4) ?: "0")
+            var recipient = sendMatcher.group(3)?.trim() ?: "Recipient"
+            val balanceStr = sendMatcher.group(4)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
+
+            if (recipient.contains(" on ", ignoreCase = true)) {
+                recipient = recipient.substringBefore(" on ", recipient).trim()
+            }
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -107,17 +124,23 @@ object MpesaParser {
             )
         }
 
-        // 3. Receive Money: QFG8XYZ Confirmed. You have received Ksh1,500.00 from Jane Smith on 25/7/26 at 9:00 AM. New M-PESA balance is Ksh5,200.45
+        // 3. Receive Money:
+        // "QK9876543 Confirmed. You have received Ksh3,000.00 from JANE SMITH 0722000111 on 26/7/26 at 9:00 AM. New M-PESA balance is Ksh8,000.00."
         val receivePattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+You\s+have\s+received\s+Ksh([\d,]+\.\d{2})\s+from\s+(.+?)(?:\s+on\s+.+?)?\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+You\s+have\s+received\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+from\s+(.+?)(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val receiveMatcher = receivePattern.matcher(cleanSms)
         if (receiveMatcher.find()) {
             val code = receiveMatcher.group(1) ?: ""
             val amount = parseAmount(receiveMatcher.group(2) ?: "0")
-            val sender = receiveMatcher.group(3)?.trim() ?: "Sender"
-            val balance = parseAmount(receiveMatcher.group(4) ?: "0")
+            var sender = receiveMatcher.group(3)?.trim() ?: "Sender"
+            val balanceStr = receiveMatcher.group(4)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
+
+            if (sender.contains(" on ", ignoreCase = true)) {
+                sender = sender.substringBefore(" on ", sender).trim()
+            }
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -130,9 +153,9 @@ object MpesaParser {
             )
         }
 
-        // 4. Withdraw: QFG8XYZ Confirmed. Ksh2,000.00 withdrawn from 12345 - Agent Name. New M-PESA balance is Ksh1,200.00
+        // 4. Withdraw:
         val withdrawPattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+Ksh([\d,]+\.\d{2})\s+withdrawn\s+from\s+(.+?)\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+withdrawn\s+from\s+(.+?)(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val withdrawMatcher = withdrawPattern.matcher(cleanSms)
@@ -140,7 +163,8 @@ object MpesaParser {
             val code = withdrawMatcher.group(1) ?: ""
             val amount = parseAmount(withdrawMatcher.group(2) ?: "0")
             val agent = withdrawMatcher.group(3)?.trim() ?: "Agent"
-            val balance = parseAmount(withdrawMatcher.group(4) ?: "0")
+            val balanceStr = withdrawMatcher.group(4)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -153,9 +177,9 @@ object MpesaParser {
             )
         }
 
-        // 5. Deposit: QFG8XYZ Confirmed. Give Ksh5,000.00 to 12345 - Agent Name for deposit. New M-PESA balance is Ksh7,200.00
+        // 5. Deposit:
         val depositPattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+Give\s+Ksh([\d,]+\.\d{2})\s+to\s+(.+?)\s+for\s+deposit\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+Give\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+to\s+(.+?)\s+for\s+deposit(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val depositMatcher = depositPattern.matcher(cleanSms)
@@ -163,7 +187,8 @@ object MpesaParser {
             val code = depositMatcher.group(1) ?: ""
             val amount = parseAmount(depositMatcher.group(2) ?: "0")
             val agent = depositMatcher.group(3)?.trim() ?: "Agent Deposit"
-            val balance = parseAmount(depositMatcher.group(4) ?: "0")
+            val balanceStr = depositMatcher.group(4)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -176,16 +201,17 @@ object MpesaParser {
             )
         }
 
-        // 6. Airtime: QFG8XYZ Confirmed. You bought Ksh100.00 of airtime on 25/7/26 at 10:00 AM. New M-PESA balance is Ksh1,100.00
+        // 6. Airtime:
         val airtimePattern = Pattern.compile(
-            """^([A-Z0-9]+)\s+Confirmed\.\s+You\s+bought\s+Ksh([\d,]+\.\d{2})\s+of\s+airtime(?:\s+on\s+.+?)?\.\s+New\s+M-PESA\s+balance\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """^([A-Z0-9]+)\s+Confirmed\.\s+You\s+bought\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\s+of\s+airtime(?:\s+on\s+.+?)?\.\s*(?:New\s+M-PESA\s+balance\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2}))?""",
             Pattern.CASE_INSENSITIVE
         )
         val airtimeMatcher = airtimePattern.matcher(cleanSms)
         if (airtimeMatcher.find()) {
             val code = airtimeMatcher.group(1) ?: ""
             val amount = parseAmount(airtimeMatcher.group(2) ?: "0")
-            val balance = parseAmount(airtimeMatcher.group(3) ?: "0")
+            val balanceStr = airtimeMatcher.group(3)
+            val balance = if (balanceStr != null) parseAmount(balanceStr) else 0.0
 
             return ParsedMpesaTransaction(
                 code = code,
@@ -198,9 +224,9 @@ object MpesaParser {
             )
         }
 
-        // 7. Fuliza Overdraft: Fuliza M-PESA amount is Ksh500.00. Outstanding Fuliza M-PESA amount is Ksh500.00
+        // 7. Fuliza Overdraft:
         val fulizaPattern = Pattern.compile(
-            """Fuliza\s+M-PESA\s+amount\s+is\s+Ksh([\d,]+\.\d{2})\.\s+Outstanding\s+Fuliza\s+M-PESA\s+amount\s+is\s+Ksh([\d,]+\.\d{2})""",
+            """Fuliza\s+M-PESA\s+amount\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})\.\s+Outstanding\s+Fuliza\s+M-PESA\s+amount\s+is\s+(?:Ksh|KES)\s*([\d,]+\.\d{2})""",
             Pattern.CASE_INSENSITIVE
         )
         val fulizaMatcher = fulizaPattern.matcher(cleanSms)

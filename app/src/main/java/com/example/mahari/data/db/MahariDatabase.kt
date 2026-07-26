@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         MerchantCategoryMappingEntity::class,
         BudgetEntity::class,
         GoalEntity::class,
-        RecapEntity::class
+        RecapEntity::class,
+        CategoryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MahariDatabase : RoomDatabase() {
@@ -21,6 +22,7 @@ abstract class MahariDatabase : RoomDatabase() {
     abstract fun merchantMappingDao(): MerchantMappingDao
     abstract fun budgetDao(): BudgetDao
     abstract fun recapDao(): RecapDao
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         @Volatile
