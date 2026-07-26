@@ -64,6 +64,28 @@
 - **Onboarding Rationale & Exemption Step**: Step 4 in onboarding sequence explains background listener needs and prompts for `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` exemption (non-blocking).
 - **Background Reliability Re-Entrant Check**: Includes a **"⚡ Check Background Reliability"** action button in Settings for manual verification anytime.
 
+### 🏪 10. Merchant Detail / Spending Profile Screen
+- **Navigation**: Tapping any merchant name anywhere (ledger rows, details, search results) opens `MerchantDetailScreen`.
+- **Header & Category Editing**: Shows merchant name and current category with an inline **"Edit Category"** action that updates `merchant_category_mappings` table and recategorizes all past/future transactions.
+- **Stats & 6-Month Spend Trend**: Displays This Month Spend, All-Time Spend, Payment Count, Average Amount, and a 6-month historical mini bar chart.
+
+### 🏷️ 11. Category Detail Screen
+- **Navigation**: Tapping a category from the dashboard spending breakdown opens `CategoryDetailScreen`.
+- **Header & Budget Progress**: Shows category name, period spend (respecting active `dateScopeMode`), and category-specific budget progress bar (with a quiet "Set Target Budget" prompt if un-set).
+- **Top Merchants Breakdown**: Renders top 3–5 merchants by spend within the category, each tappable into its own `MerchantDetailScreen`.
+
+### 📊 12. Insights / Recap History Screen (Room Persistent)
+- **Navigation**: Accessible from monthly recap view and Settings.
+- **Permanent Room DB Persistence**: Generates and stores monthly recaps in `recap_history` Room DB table (`RecapEntity` / `RecapDao`), preserving past recaps permanently even if model logic updates.
+- **SHAP Plain-Language Inspection**: Tapping past monthly cards opens full recap modal view displaying SHAP feature attribution items.
+
+### ⚙️ 13. Data & Privacy Settings Screen
+- **Navigation**: Consolidated under Settings → Data & Privacy (`DataPrivacyScreen`).
+- **Backup & Restore**: Encrypted local `.json` export and restore options.
+- **Sync Mode & Privacy Text**: Cloud sync toggle with plain-language data minimization rules.
+- **SMS Backfill Re-Scan**: Trigger historical inbox scanning anytime.
+- **Destructive Data Wipe**: Red destructive zone requiring typing `"DELETE"` to wipe local Room DB and send purge payload to backend server if sync mode was used.
+
 ---
 
 ## 🎨 Design System & Palette
