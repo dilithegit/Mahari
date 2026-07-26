@@ -1,5 +1,6 @@
 package com.example.mahari.ui.recap
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,15 +11,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.db.RecapEntity
+import com.example.mahari.data.recap.StatisticalRecapEngine
+import com.example.mahari.data.security.SecurityManager
 import com.example.mahari.theme.HeroEmeraldDark
+import com.example.mahari.theme.PrimaryContainer
 import com.example.mahari.theme.WarmCharcoalElevatedDark
 import com.example.mahari.theme.WarmMetalDark
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,41 +35,51 @@ fun RecapHistoryScreen(
     database: MahariDatabase,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var recaps by remember { mutableStateOf<List<RecapEntity>>(emptyList()) }
     var selectedRecap by remember { mutableStateOf<RecapEntity?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var isGenerating by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    val currentMonthYear = remember {
+        SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+    }
+
+    val securityManager = remember { SecurityManager(context) }
+
+    fun loadRecaps() {
         coroutineScope.launch {
             val dao = database.recapDao()
-            var stored = dao.getAllRecaps()
-            if (stored.isEmpty()) {
-                // Seed sample past recaps permanently into Room DB
-                val sampleRecaps = listOf(
-                    RecapEntity(
-                        monthYear = "2026-06",
-                        headlineInsight = "Food & Dining spend was 38% above 3-month baseline",
-                        totalSpend = 42800.0,
-                        topCategory = "Food & Dining",
-                        shapExplanationsJson = "[\"SHAP Feature: Java House frequency increased by 3.2x\", \"SHAP Feature: Midnight till transfers contributed KES 8,400\", \"On-Device XGBoost Confidence: 94.2%\"]",
-                        timestamp = System.currentTimeMillis() - 30L * 86400000L
-                    ),
-                    RecapEntity(
-                        monthYear = "2026-05",
-                        headlineInsight = "Utilities & Airtime remained stable under budget",
-                        totalSpend = 31200.0,
-                        topCategory = "Utilities",
-                        shapExplanationsJson = "[\"SHAP Feature: KPLC Token spend decreased by 12%\", \"SHAP Feature: Airtime top-ups evenly spaced\", \"On-Device XGBoost Confidence: 96.8%\"]",
-                        timestamp = System.currentTimeMillis() - 60L * 86400000L
-                    )
-                )
-                sampleRecaps.forEach { dao.insertRecap(it) }
-                stored = dao.getAllRecaps()
-            }
-            recaps = stored
+            recaps = dao.getAllRecaps()
             isLoading = false
         }
+    }
+
+    fun generateCurrentRecap() {
+        coroutineScope.launch {
+            isGenerating = true
+            try {
+                val budget = securityManager.getMonthlyBudget()
+                val newRecap = StatisticalRecapEngine.generateRecap(
+                    monthYear = currentMonthYear,
+                    transactionDao = database.transactionDao(),
+                    monthlyBudget = budget
+                )
+                database.recapDao().insertRecap(newRecap)
+                recaps = database.recapDao().getAllRecaps()
+                Toast.makeText(context, "Monthly recap generated!", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to generate recap.", Toast.LENGTH_SHORT).show()
+            } finally {
+                isGenerating = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadRecaps()
     }
 
     if (selectedRecap != null) {
@@ -75,12 +94,30 @@ fun RecapHistoryScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "Monthly Recap • ${r.monthYear}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Monthly Recap • ${r.monthYear}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = PrimaryContainer
+                    ) {
+                        Text(
+                            text = "Local Statistical Engine",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarmMetalDark,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -94,7 +131,7 @@ fun RecapHistoryScreen(
                     }
                 }
 
-                Text("🤖 SHAP Plain-Language Feature Attribution", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
+                Text("📊 Plain-Language Financial Insights", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
 
                 val shapList = remember(r) {
                     r.shapExplanationsJson
@@ -103,17 +140,20 @@ fun RecapHistoryScreen(
                 }
 
                 shapList.forEach { explanation ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = WarmCharcoalElevatedDark),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "• ${explanation.trim()}",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                    val cleanText = explanation.replace("\\", "").trim()
+                    if (cleanText.isNotBlank()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = WarmCharcoalElevatedDark),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "• $cleanText",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
                     }
                 }
 
@@ -132,7 +172,7 @@ fun RecapHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Insights & Past Recaps", fontWeight = FontWeight.Bold) },
+                title = { Text("Insights & Recaps", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("← Back", color = WarmMetalDark, fontWeight = FontWeight.Bold)
@@ -155,9 +195,35 @@ fun RecapHistoryScreen(
                 contentPadding = PaddingValues(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Action Header
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.35f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text("MONTHLY FINANCIAL RECAP ENGINE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
+                            Text("Compute statistical deltas vs. 3-month averages, merchant visit anomalies, and budget variance.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Button(
+                                onClick = { generateCurrentRecap() },
+                                enabled = !isGenerating,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = WarmMetalDark)
+                            ) {
+                                Text(if (isGenerating) "Computing Insights..." else "⚡ Generate $currentMonthYear Recap")
+                            }
+                        }
+                    }
+                }
+
                 item {
                     Text(
-                        text = "PERMANENT MONTHLY ML RECAP ARCHIVE",
+                        text = "PERMANENT MONTHLY RECAP ARCHIVE",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
@@ -165,50 +231,74 @@ fun RecapHistoryScreen(
                     )
                 }
 
-                items(recaps) { r ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedRecap = r },
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.3f))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                if (recaps.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = r.monthYear,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = WarmMetalDark
-                                )
-                                Text(
-                                    text = "Ksh ${"%.0f".format(r.totalSpend)}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = "No recaps generated yet.\nTap 'Generate $currentMonthYear Recap' above to compute insights from your real transactions.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
-
-                            Text(
-                                text = r.headlineInsight,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                        }
+                    }
+                } else {
+                    items(recaps) { r ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedRecap = r },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, WarmMetalDark.copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("View SHAP Analysis →", fontSize = 12.sp, color = WarmMetalDark, fontWeight = FontWeight.Bold)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = r.monthYear,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = WarmMetalDark
+                                    )
+                                    Text(
+                                        text = "Ksh ${"%.0f".format(r.totalSpend)}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
+                                Text(
+                                    text = r.headlineInsight,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text("View Detailed Insights →", fontSize = 12.sp, color = WarmMetalDark, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
