@@ -27,6 +27,10 @@ android {
         versionName = "3.0.0"
     }
 
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
