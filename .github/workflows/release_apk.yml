@@ -62,22 +62,19 @@ jobs:
           files: |
             app/build/outputs/apk/release/mahari.apk
             app/build/outputs/apk/release/mahari.apk.sha256
-          name: "Mahari v3.0.0 Release (${{ github.ref_name }})"
+          name: "Mahari Release ${{ github.ref_name }}"
           body: |
-            ## 📱 Mahari Direct-Install Release Package
+            ## 📱 Mahari Direct-Install Release Package (${{ github.ref_name }})
 
             > [!NOTE]
             > This is a direct-install APK package (`mahari.apk`). If prompted by Android, enable **"Install unknown apps"** for your browser or file manager.
 
-            ### 🔒 Integrity Verification
-            Verify the downloaded APK checksum matches:
-            ```
-            $(cat app/build/outputs/apk/release/mahari.apk.sha256)
-            ```
-
-            ### 🚀 What's New in v3.0.0
-            - **Financial Health Score & Confidence Engine**: 4-factor scoring (Budget, Savings Rate, Spending Consistency, Debt Reliance) with data-sufficiency confidence scale.
-            - **Optimized Pull-To-Refresh**: Incremental SMS scanning & indexed Room database queries for instant UI responsiveness.
-            - **Jetpack Navigation Compose & Encrypted Storage**: Full back stack navigation with AES-256 GCM database encryption at rest.
+            ### 🚀 What's New in ${{ github.ref_name }}
+            - **🔔 Real-Time Push Notifications Fix**: Resolved Android 13+ `POST_NOTIFICATIONS` runtime permission silencing and added instant expense budget alerts.
+            - **⚡ Foreground Auto-Refresh**: Automatically re-scans M-Pesa inbox on app launch and return from background with a 60-second battery & IO throttle guard.
+            - **☁️ Render Free Tier Cloud Sync**: Configured FastAPI XGBoost+SHAP backend deployment (`render.yaml`) on Render free tier with HTTPS end-to-end encryption.
+            - **💰 Current Balance Card & Nullability Engine**: Nullable `runningBalance` model (`Double?`) with Room `MIGRATION_4_5` to handle Ksh, KES, Ksh., KES. format variants, negative balances (`Ksh-350.00`), and zero balances (`Ksh 0.00`).
+            - **🔄 Dashboard Pull-to-Refresh Parity**: Pull-to-refresh triggers full `SmsBackfillManager` re-scan without throttling.
+            - **🛡️ Data Integrity Safeguards**: Automated regression suite & runtime sanity checks comparing raw SQLite counts vs date-scoped counts.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
