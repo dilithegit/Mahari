@@ -28,6 +28,8 @@ object SmsBackfillManager {
 
         val entitiesToInsert = mutableListOf<TransactionEntity>()
 
+        var totalMessagesProcessed = 0
+
         try {
             val cursor = appContext.contentResolver.query(
                 uri,
@@ -42,12 +44,12 @@ object SmsBackfillManager {
                 val bodyIdx = c.getColumnIndex("body")
                 val dateIdx = c.getColumnIndex("date")
 
-                val totalMessages = c.count
+                totalMessagesProcessed = c.count
                 var processed = 0
 
                 while (c.moveToNext()) {
                     processed++
-                    onProgress?.invoke(processed, totalMessages)
+                    onProgress?.invoke(processed, totalMessagesProcessed)
 
                     val address = if (addressIdx != -1) c.getString(addressIdx) ?: "" else ""
                     val body = if (bodyIdx != -1) c.getString(bodyIdx) ?: "" else ""
@@ -82,6 +84,9 @@ object SmsBackfillManager {
                     }
                 }
             }
+
+            val resultCount = entitiesToInsert.size
+            android.util.Log.d("SmsBackfillManager", "Backfill processed $totalMessagesProcessed total SMS messages, found $resultCount M-Pesa transactions.")
 
             if (entitiesToInsert.isNotEmpty()) {
                 transactionDao.insertTransactionsIgnore(entitiesToInsert)
