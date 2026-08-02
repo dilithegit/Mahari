@@ -48,6 +48,7 @@ adb -s R7AWC009KWA shell "dumpsys package com.example.mahari | grep -E 'versionN
 
 # Step 4: Commit & Push Code to GitHub
 Write-Host "[4/6] Committing code changes with author identity..." -ForegroundColor Yellow
+$ErrorActionPreference = "Continue"
 git add .
 git commit -m "$CommitMessage"
 git push origin main
