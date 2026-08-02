@@ -159,10 +159,23 @@ class DashboardViewModel(
     private var lastForegroundScanTime: Long = 0L
 
     fun refreshDashboardThrottled(context: Context, database: MahariDatabase, minIntervalMs: Long = 60_000L) {
-        val now = System.currentTimeMillis()
-        if (now - lastForegroundScanTime >= minIntervalMs) {
-            lastForegroundScanTime = now
-            refreshDashboard(context, database)
+        viewModelScope.launch {
+            val hasSmsPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.READ_SMS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            val count = database.transactionDao().getAllTransactionsSync().size
+            val now = System.currentTimeMillis()
+
+            if (count == 0 && hasSmsPermission) {
+                // Auto-recovery: Database is empty but SMS permission is granted -> trigger immediate backfill
+                android.util.Log.i("DashboardViewModel", "Auto-recovering empty database via SMS backfill on launch...")
+                refreshDashboard(context, database)
+            } else if (now - lastForegroundScanTime >= minIntervalMs) {
+                lastForegroundScanTime = now
+                refreshDashboard(context, database)
+            }
         }
     }
 

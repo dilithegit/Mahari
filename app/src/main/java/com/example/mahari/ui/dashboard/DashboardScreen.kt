@@ -158,8 +158,37 @@ fun DashboardScreen(
                             FilterChip(
                                 selected = isDarkMode,
                                 onClick = { onToggleTheme(!isDarkMode) },
-                                label = { Text(if (isDarkMode) "🌙" else "☀️") }
+                                label = { Text(if (isDarkMode) "Dark" else "Light") }
                             )
+                        }
+                    }
+                }
+
+                // Auto-Recovery loading card when database is empty
+                if (uiState.isRefreshing && uiState.transactions.isEmpty()) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "Restoring your transaction history...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                 }
