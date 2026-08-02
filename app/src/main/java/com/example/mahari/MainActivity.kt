@@ -40,12 +40,16 @@ class MainActivity : FragmentActivity() {
 
     fun requestSmsPermissions(callback: (Boolean) -> Unit) {
         this.permissionCallback = callback
+        val perms = mutableListOf(
+            android.Manifest.permission.READ_SMS,
+            android.Manifest.permission.RECEIVE_SMS
+        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            perms.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(
-                android.Manifest.permission.READ_SMS,
-                android.Manifest.permission.RECEIVE_SMS
-            ),
+            perms.toTypedArray(),
             1001
         )
     }
@@ -101,6 +105,23 @@ class MainActivity : FragmentActivity() {
 
                 if (initialTargetRoute != null && isUnlocked && isOnboardingFinished) {
                     navController.navigate(initialTargetRoute)
+                }
+            }
+
+            val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                        viewModel.refreshDashboardThrottled(
+                            context = this@MainActivity,
+                            database = database,
+                            minIntervalMs = 60_000L
+                        )
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }
 

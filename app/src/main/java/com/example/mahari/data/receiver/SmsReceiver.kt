@@ -60,6 +60,35 @@ class SmsReceiver : BroadcastReceiver() {
                             party = parsed.merchantOrParty,
                             isExpense = parsed.isExpense
                         )
+
+                        if (parsed.isExpense) {
+                            try {
+                                val budget = db.budgetDao().getCurrentBudget()
+                                if (budget != null) {
+                                    val nowCal = java.util.Calendar.getInstance().apply {
+                                        set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                        set(java.util.Calendar.MINUTE, 0)
+                                        set(java.util.Calendar.SECOND, 0)
+                                        set(java.util.Calendar.MILLISECOND, 0)
+                                    }
+                                    val startOfToday = nowCal.timeInMillis
+                                    val todaySpent = db.transactionDao().getAllTransactionsSync()
+                                        .filter { it.timestamp >= startOfToday && it.isExpense }
+                                        .sumOf { it.amount }
+                                    val eval = com.example.mahari.data.budget.BudgetEngine.evaluate(todaySpent, budget.dailyLimit)
+                                    if (eval.alertLevel != com.example.mahari.data.budget.BudgetAlertLevel.NORMAL) {
+                                        com.example.mahari.data.notification.NotificationHelper.showBudgetAlertNotification(
+                                            context = context,
+                                            evaluation = eval,
+                                            latestMerchant = parsed.merchantOrParty,
+                                            latestAmount = parsed.amount
+                                        )
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                     }
                 }
             }
