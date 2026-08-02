@@ -5,7 +5,6 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.compose.compiler)
-  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
 }
 
@@ -26,8 +25,8 @@ android {
         targetSdk = 35
 
 
-        versionCode = 17
-        versionName = "3.10.0"
+        versionCode = 18
+        versionName = "3.11.0"
     }
 
     lint {
@@ -141,6 +140,8 @@ dependencies {
   // Security & Biometric
   implementation(libs.androidx.security.crypto)
   implementation(libs.androidx.biometric)
+  implementation("net.zetetic:android-database-sqlcipher:4.5.4@aar")
+  implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
   // Room Database
   implementation(libs.androidx.room.runtime)

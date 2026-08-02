@@ -1,10 +1,12 @@
 package com.example.mahari.data.repository
 
 import com.example.mahari.data.db.*
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 
 class TransactionRepository(
+    private val database: MahariDatabase,
     private val transactionDao: TransactionDao,
     private val merchantMappingDao: MerchantMappingDao,
     private val budgetDao: BudgetDao
@@ -12,26 +14,8 @@ class TransactionRepository(
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactionsFlow()
     val currentBudget: Flow<BudgetEntity?> = budgetDao.getCurrentBudgetFlow()
 
-    fun getTodayStartTimestamp(): Long {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        return cal.timeInMillis
-    }
-
-    fun getMonthStartTimestamp(): Long {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        return cal.timeInMillis
-    }
+    fun getTodayStartTimestamp(): Long = com.example.mahari.util.DateUtils.getTodayStartTimestamp()
+    fun getMonthStartTimestamp(): Long = com.example.mahari.util.DateUtils.getMonthStartTimestamp()
 
     fun getTodayExpenses(): Flow<Double?> = transactionDao.getTotalExpenseSince(getTodayStartTimestamp())
     fun getMonthExpenses(): Flow<Double?> = transactionDao.getTotalExpenseSince(getMonthStartTimestamp())
@@ -40,15 +24,15 @@ class TransactionRepository(
     fun searchTransactions(query: String): Flow<List<TransactionEntity>> = transactionDao.searchTransactions(query)
 
     suspend fun recategorizeMerchant(merchant: String, newCategory: String) {
-        // Save user preference mapping
-        merchantMappingDao.insertMapping(
-            MerchantCategoryMappingEntity(
-                merchantPattern = merchant.uppercase(),
-                category = newCategory
+        database.withTransaction {
+            merchantMappingDao.insertMapping(
+                MerchantCategoryMappingEntity(
+                    merchantPattern = merchant.uppercase().trim(),
+                    category = newCategory
+                )
             )
-        )
-        // Update all historical transactions for this merchant
-        transactionDao.updateCategoryForMerchant(merchant, newCategory)
+            transactionDao.updateCategoryForMerchant(merchant, newCategory)
+        }
     }
 
     suspend fun setMonthlyBudget(monthlyLimit: Double) {

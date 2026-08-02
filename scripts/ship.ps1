@@ -117,17 +117,35 @@ if (($installedDump -join " ") -match "versionName=$targetName") {
 
 # Step 4: Commit & Push Code to GitHub (using native Git CLI only)
 Write-Host "[4/6] Committing code changes with author identity (native Git CLI)..." -ForegroundColor Yellow
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = "Stop"
 git add .
 $fullCommitMsg = "$CommitMessage (v$targetName)"
 git commit -m $fullCommitMsg
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
+    Write-Error "Git commit failed! Aborting ship."
+    exit 1
+}
+
 git push origin main
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Git push origin main failed! Aborting ship."
+    exit 1
+}
 
 # Step 5: Tag Release & Push Tag (native Git CLI only)
 Write-Host "[5/6] Tagging release v$targetName and pushing tag to origin..." -ForegroundColor Yellow
 $tagName = "v$targetName"
 git tag $tagName
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Git tag creation failed! Aborting ship."
+    exit 1
+}
+
 git push origin $tagName
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Git push tag failed! Aborting ship."
+    exit 1
+}
 
 # Step 6: Verify Live GitHub Release Page (native PowerShell API call only)
 Write-Host "[6/6] Polling GitHub REST API for live release assets..." -ForegroundColor Yellow

@@ -21,7 +21,6 @@ import com.example.mahari.data.db.BudgetEntity
 import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
-import com.example.mahari.data.sync.CloudSyncManager
 import com.example.mahari.theme.AlertRed
 import com.example.mahari.theme.AlertRedContainer
 import com.example.mahari.theme.PrimaryContainer
@@ -45,27 +44,8 @@ fun SettingsDialog(
     var monthlyBudgetInput by remember { mutableStateOf(securityManager.getMonthlyBudget().toInt().toString()) }
     var isBiometricEnabled by remember { mutableStateOf(securityManager.isBiometricEnabled()) }
 
-    var isCloudSyncEnabled by remember { mutableStateOf(securityManager.isCloudSyncEnabled()) }
-    var showCloudConfirmDialog by remember { mutableStateOf(false) }
-    var isPurgingData by remember { mutableStateOf(false) }
-
     var isBackfilling by remember { mutableStateOf(false) }
     var backfillMessage by remember { mutableStateOf<String?>(null) }
-
-    if (showCloudConfirmDialog) {
-        CloudSyncConfirmationDialog(
-            onConfirm = {
-                securityManager.setConfirmedCloudSync(true)
-                securityManager.setCloudSyncEnabled(true)
-                isCloudSyncEnabled = true
-                showCloudConfirmDialog = false
-                Toast.makeText(context, "Cloud Sync mode enabled.", Toast.LENGTH_SHORT).show()
-            },
-            onDismiss = {
-                showCloudConfirmDialog = false
-            }
-        )
-    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -141,54 +121,16 @@ fun SettingsDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text(
-                            text = "Sync with cloud for enhanced insights (optional)",
+                            text = "100% Private & Local Storage",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Runs full Python XGBoost + SHAP pipeline on backend server. Uploads ONLY structured transaction amounts, categories, and merchants. RAW SMS TEXT NEVER LEAVES YOUR PHONE.",
+                            text = "Mahari processes all M-Pesa receipts, budgets, and monthly recaps 100% offline on your device.",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 15.sp
                         )
-                    }
-                    Switch(
-                        checked = isCloudSyncEnabled,
-                        onCheckedChange = { enable ->
-                            if (enable) {
-                                if (!securityManager.hasConfirmedCloudSync()) {
-                                    showCloudConfirmDialog = true
-                                } else {
-                                    securityManager.setCloudSyncEnabled(true)
-                                    isCloudSyncEnabled = true
-                                }
-                            } else {
-                                securityManager.setCloudSyncEnabled(false)
-                                isCloudSyncEnabled = false
-                            }
-                        }
-                    )
-                }
-
-                if (isCloudSyncEnabled) {
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                isPurgingData = true
-                                val success = CloudSyncManager.purgeCloudData(securityManager)
-                                isPurgingData = false
-                                if (success) {
-                                    Toast.makeText(context, "All synced cloud data permanently deleted from backend server.", Toast.LENGTH_LONG).show()
-                                } else {
-                                    Toast.makeText(context, "No cloud data found or server unreachable.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        enabled = !isPurgingData,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = AlertRedContainer, contentColor = AlertRed)
-                    ) {
-                        Text(if (isPurgingData) "Purging Server Data..." else "🗑️ Delete My Synced Cloud Data")
                     }
                 }
 

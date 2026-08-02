@@ -11,6 +11,7 @@ class AppContainer(private val context: Context) {
 
     val transactionRepository: TransactionRepository by lazy {
         TransactionRepository(
+            database = database,
             transactionDao = database.transactionDao(),
             merchantMappingDao = database.merchantMappingDao(),
             budgetDao = database.budgetDao()

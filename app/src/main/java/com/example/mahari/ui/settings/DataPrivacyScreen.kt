@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.sp
 import com.example.mahari.data.db.MahariDatabase
 import com.example.mahari.data.parser.SmsBackfillManager
 import com.example.mahari.data.security.SecurityManager
-import com.example.mahari.data.sync.CloudSyncManager
 import com.example.mahari.theme.AlertRed
 import com.example.mahari.theme.AlertRedContainer
 import com.example.mahari.theme.PrimaryContainer
@@ -34,51 +33,19 @@ fun DataPrivacyScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var isCloudSyncEnabled by remember { mutableStateOf(securityManager.isCloudSyncEnabled()) }
-    var showCloudConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var deleteInputText by remember { mutableStateOf("") }
     var isBackfilling by remember { mutableStateOf(false) }
     var isPurging by remember { mutableStateOf(false) }
 
-    if (showCloudConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showCloudConfirmDialog = false },
-            title = { Text("🔒 Cloud Sync Privacy Guarantee", fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "When Cloud Sync is enabled, Mahari uploads ONLY structured transaction records (amount, category, merchant, date) to our encrypted backend server for XGBoost + SHAP feature attribution.\n\nRAW SMS TEXT AND CONTACT NAMES NEVER LEAVE YOUR PHONE.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        securityManager.setConfirmedCloudSync(true)
-                        securityManager.setCloudSyncEnabled(true)
-                        isCloudSyncEnabled = true
-                        showCloudConfirmDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = WarmMetalDark)
-                ) {
-                    Text("I Understand & Enable")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCloudConfirmDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("🚨 Delete All Local & Cloud Data?", fontWeight = FontWeight.Bold, color = AlertRed) },
+            title = { Text("🚨 Delete All Local Data?", fontWeight = FontWeight.Bold, color = AlertRed) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "This will permanently delete your entire on-device database and send a purge command to the cloud server (if sync was used). THIS ACTION CANNOT BE UNDONE.",
+                        "This will permanently delete your entire on-device database. THIS ACTION CANNOT BE UNDONE.",
                         fontSize = 13.sp,
                         color = AlertRed
                     )
@@ -98,12 +65,11 @@ fun DataPrivacyScreen(
                         if (deleteInputText.trim() == "DELETE") {
                             coroutineScope.launch {
                                 isPurging = true
-                                CloudSyncManager.purgeCloudData(securityManager)
                                 database.clearAllTables()
                                 securityManager.setOnboardingComplete(false)
                                 isPurging = false
                                 showDeleteConfirmDialog = false
-                                Toast.makeText(context, "All local & backend user data deleted permanently.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "All local user data deleted permanently.", Toast.LENGTH_LONG).show()
                                 onBack()
                             }
                         } else {
@@ -176,67 +142,21 @@ fun DataPrivacyScreen(
                 }
             }
 
-            // Section 2: Sync Mode
+            // Section 2: 100% Local & Offline Privacy
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
             ) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("☁️ ENHANCED CLOUD INSIGHTS (OPTIONAL)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text("Sync Mode Toggle", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Uploads structured transaction metadata ONLY for XGBoost + SHAP analysis. Raw SMS text NEVER leaves your device.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = isCloudSyncEnabled,
-                            onCheckedChange = { enable ->
-                                if (enable) {
-                                    if (!securityManager.hasConfirmedCloudSync()) {
-                                        showCloudConfirmDialog = true
-                                    } else {
-                                        securityManager.setCloudSyncEnabled(true)
-                                        isCloudSyncEnabled = true
-                                    }
-                                } else {
-                                    securityManager.setCloudSyncEnabled(false)
-                                    isCloudSyncEnabled = false
-                                }
-                            }
-                        )
-                    }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = if (isCloudSyncEnabled) "Cloud sync: ON — Encrypted (HTTPS)" else "Cloud sync: OFF",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = if (isCloudSyncEnabled) WarmMetalDark else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = if (isCloudSyncEnabled)
-                                    "Device ID: ${securityManager.getOrCreateDeviceId()}\nBackend: https://mahari-backend.onrender.com (Encrypted at rest)"
-                                else
-                                    "All transaction data remains 100% offline on your device.",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 16.sp
-                            )
-                        }
-                    }
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("🛡️ 100% PRIVATE & LOCAL STORAGE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarmMetalDark)
+                    Text(
+                        "Mahari operates 100% offline on your device. Your M-Pesa SMS receipts, financial stats, health scores, and merchant mappings NEVER leave your phone.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
                 }
             }
 

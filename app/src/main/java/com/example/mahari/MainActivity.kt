@@ -78,11 +78,6 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        MahariDatabase.lockAndEncryptDatabase(this)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -146,6 +141,11 @@ class MainActivity : FragmentActivity() {
                             database = database,
                             minIntervalMs = 60_000L
                         )
+                    } else if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                        val isSecurityConfigured = securityManager.isBiometricEnabled() || securityManager.getPin() != null
+                        if (isSecurityConfigured) {
+                            isUnlocked = false
+                        }
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)

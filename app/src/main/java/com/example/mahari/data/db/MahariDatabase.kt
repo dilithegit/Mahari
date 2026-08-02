@@ -81,39 +81,19 @@ abstract class MahariDatabase : RoomDatabase() {
         fun getDatabase(context: Context): MahariDatabase {
             return INSTANCE ?: synchronized(this) {
                 val sec = SecurityManager(context)
-                DatabaseFileCipher.decryptDatabaseOnDisk(context, sec)
+                val factory = com.example.mahari.data.security.SqlCipherMigrationHelper.prepareEncryptedDatabase(context, sec)
 
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     MahariDatabase::class.java,
                     "mahari_database.db"
                 )
+                    .openHelperFactory(factory)
                     .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
-                    .fallbackToDestructiveMigration()
                     .build()
 
                 INSTANCE = instance
                 instance
-            }
-        }
-
-        fun lockAndEncryptDatabase(context: Context) {
-            synchronized(this) {
-                val inst = INSTANCE
-                if (inst != null && inst.isOpen) {
-                    try {
-                        inst.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-                INSTANCE = null
-                try {
-                    val sec = SecurityManager(context)
-                    DatabaseFileCipher.encryptDatabaseOnDisk(context, sec)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
             }
         }
     }
