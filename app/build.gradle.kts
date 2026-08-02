@@ -26,8 +26,8 @@ android {
         targetSdk = 35
 
 
-        versionCode = 16
-        versionName = "3.9.0"
+        versionCode = 17
+        versionName = "3.10.0"
     }
 
     lint {

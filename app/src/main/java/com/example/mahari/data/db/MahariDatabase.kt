@@ -101,11 +101,19 @@ abstract class MahariDatabase : RoomDatabase() {
             synchronized(this) {
                 val inst = INSTANCE
                 if (inst != null && inst.isOpen) {
-                    inst.close()
+                    try {
+                        inst.close()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
                 INSTANCE = null
-                val sec = SecurityManager(context)
-                DatabaseFileCipher.encryptDatabaseOnDisk(context, sec)
+                try {
+                    val sec = SecurityManager(context)
+                    DatabaseFileCipher.encryptDatabaseOnDisk(context, sec)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }

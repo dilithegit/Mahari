@@ -117,6 +117,21 @@ class MainActivity : FragmentActivity() {
                     transactionDao = database.transactionDao()
                 )
 
+                kotlinx.coroutines.Dispatchers.IO.let { dispatcher ->
+                    kotlinx.coroutines.withContext(dispatcher) {
+                        try {
+                            val budget = securityManager.getMonthlyBudget()
+                            com.example.mahari.data.recap.StatisticalRecapEngine.backfillHistoricalRecaps(
+                                transactionDao = database.transactionDao(),
+                                recapDao = database.recapDao(),
+                                monthlyBudget = budget
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
                 if (initialTargetRoute != null && isUnlocked && isOnboardingFinished) {
                     navController.navigate(initialTargetRoute)
                 }
