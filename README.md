@@ -52,8 +52,14 @@
 ### ☁️ 6. Optional Opt-In Cloud Sync & Python FastAPI ML Backend
 - **100% Offline-First Default**: Cloud sync is off by default and requires explicit user consent via confirmation modal.
 - **Data Minimization Guarantee**: Raw SMS text, phone numbers, and contact names **never leave the device**. Only structured DTOs (`amount`, `category`, `merchant`, `timestamp`, `isExpense`) are uploaded over HTTPS/TLS.
-- **Python FastAPI Backend** (`mahari_backend/`): Runs XGBoost + SHAP feature attribution engine. Encrypts data at rest using `cryptography.fernet.Fernet`.
+- **Python FastAPI Backend on Render Free Tier** (`mahari_backend/`): Deployed via `render.yaml` to Render's free tier. Runs XGBoost + SHAP feature attribution engine and encrypts data at rest using `cryptography.fernet.Fernet`.
+- **Free-Tier Deployment Notice**: Render's free tier spins down after ~15 minutes of inactivity. Cold starts may take a few seconds to wake on subsequent requests. If cloud traffic exceeds free-tier limits, infrastructure needs revisiting.
 - **Permanent Data Deletion**: Includes `DELETE /api/v1/user-data/{deviceId}` endpoint to permanently purge all synced cloud data.
+
+### 🔔 7. Real-Time Push Notifications & Budget Alerts
+- **Android 13+ Runtime Permission**: Explicitly requests `POST_NOTIFICATIONS` runtime permission during onboarding and app startup to guarantee push alerts are delivered.
+- **Real-Time Transaction Alerts**: Fires instant `"💸 Payment Sent"` (for outgoing expenses) and `"💰 Money Received"` (for incoming payments) notifications when M-Pesa SMS messages arrive.
+- **Foreground Auto-Refresh**: Automatically re-scans inbox on app cold launch and return from background, guarded by a 60-second throttle interval to conserve battery and storage IO.
 
 ### 🧠 7. Dynamic Categorization & Persistent Memory
 - **Dynamic Keyword Matrix**: Auto-categorizes merchants, dining, supermarkets, fuel, and transport.

@@ -16,8 +16,8 @@ import javax.net.ssl.HttpsURLConnection
 
 object CloudSyncManager {
 
-    // Default development endpoint (Can be configured or tunneled via ngrok HTTPS)
-    private const val BASE_URL = "https://10.0.2.2:8443"
+    // Production HTTPS endpoint hosted on Render free tier
+    private const val BASE_URL = "https://mahari-backend.onrender.com"
 
     suspend fun syncStructuredTransactions(
         context: Context,
@@ -58,8 +58,8 @@ object CloudSyncManager {
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("Accept", "application/json")
                 doOutput = true
-                connectTimeout = 5000
-                readTimeout = 5000
+                connectTimeout = 15000
+                readTimeout = 15000
             }
 
             OutputStreamWriter(conn.outputStream).use { writer ->
