@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MerchantMappingDao {
-    @Query("SELECT * FROM merchant_category_mappings WHERE merchantPattern = :merchant LIMIT 1")
+    @Query("SELECT * FROM merchant_category_mappings WHERE LOWER(TRIM(merchantPattern)) = LOWER(TRIM(:merchant)) LIMIT 1")
     suspend fun getMappingForMerchant(merchant: String): MerchantCategoryMappingEntity?
 
     @Query("SELECT * FROM merchant_category_mappings")

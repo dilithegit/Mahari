@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import ssl
-from security import save_encrypted_user_data, delete_user_data
+from security import save_encrypted_user_data, load_encrypted_user_data, delete_user_data
 from ml_engine import analyze_structured_transactions
 
 app = FastAPI(
@@ -52,6 +52,18 @@ async def sync_structured_data(request: StructuredSyncRequest):
         shapSummary=ml_result["shap_summary"],
         textInsight=ml_result["text_insight"]
     )
+
+@app.get("/api/v1/user-data/{device_id}")
+async def inspect_user_data(device_id: str = Path(..., description="Device ID to inspect stored data for")):
+    data = load_encrypted_user_data(device_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="No synced cloud records found for device ID.")
+    return {
+        "status": "success",
+        "deviceId": device_id,
+        "recordCount": len(data.get("transactions", [])),
+        "payload": data
+    }
 
 @app.delete("/api/v1/user-data/{device_id}")
 async def purge_user_data(device_id: str = Path(..., description="Device ID to permanently purge")):

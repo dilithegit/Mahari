@@ -211,6 +211,32 @@ fun DataPrivacyScreen(
                             }
                         )
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = if (isCloudSyncEnabled) "Cloud sync: ON — Encrypted (HTTPS)" else "Cloud sync: OFF",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (isCloudSyncEnabled) WarmMetalDark else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (isCloudSyncEnabled)
+                                    "Device ID: ${securityManager.getOrCreateDeviceId()}\nBackend: https://mahari-backend.onrender.com (Encrypted at rest)"
+                                else
+                                    "All transaction data remains 100% offline on your device.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
                 }
             }
 

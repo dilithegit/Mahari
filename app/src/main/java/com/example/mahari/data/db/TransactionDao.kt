@@ -27,7 +27,7 @@ interface TransactionDao {
     suspend fun updateTransaction(transaction: TransactionEntity)
 
 
-    @Query("UPDATE transactions SET category = :newCategory WHERE merchantOrParty = :merchant")
+    @Query("UPDATE transactions SET category = :newCategory WHERE LOWER(TRIM(merchantOrParty)) = LOWER(TRIM(:merchant))")
     suspend fun updateCategoryForMerchant(merchant: String, newCategory: String)
 
     @Query("SELECT SUM(amount) FROM transactions WHERE isExpense = 1 AND timestamp >= :startTime")
