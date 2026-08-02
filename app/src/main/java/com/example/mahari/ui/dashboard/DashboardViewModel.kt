@@ -156,6 +156,16 @@ class DashboardViewModel(
         initialValue = DashboardUiState()
     )
 
+    private var lastForegroundScanTime: Long = 0L
+
+    fun refreshDashboardThrottled(context: Context, database: MahariDatabase, minIntervalMs: Long = 60_000L) {
+        val now = System.currentTimeMillis()
+        if (now - lastForegroundScanTime >= minIntervalMs) {
+            lastForegroundScanTime = now
+            refreshDashboard(context, database)
+        }
+    }
+
     fun refreshDashboard(context: Context, database: MahariDatabase) {
         viewModelScope.launch {
             _isRefreshing.value = true
