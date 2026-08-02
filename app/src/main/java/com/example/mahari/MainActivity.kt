@@ -54,6 +54,18 @@ class MainActivity : FragmentActivity() {
         )
     }
 
+    fun checkAndRequestNotificationPermissionOnLaunch() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    1002
+                )
+            }
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -98,6 +110,8 @@ class MainActivity : FragmentActivity() {
             val uiState by viewModel.uiState.collectAsState()
 
             LaunchedEffect(Unit) {
+                checkAndRequestNotificationPermissionOnLaunch()
+
                 TransactionMigrationManager.runOneTimeDateMigration(
                     context = this@MainActivity,
                     transactionDao = database.transactionDao()
